@@ -4,6 +4,7 @@ import plotly.express as px
 import os
 
 # --- 1. CONFIGURAÇÃO E DADOS ---
+# O arquivo CSV será criado automaticamente na primeira vez que você salvar uma atividade
 FILE_TP = "trabalho_padronizado.csv"
 
 def carregar_tp():
@@ -17,7 +18,7 @@ def carregar_tp():
 
 st.set_page_config(page_title="CronoNHS - Trabalho Padronizado", layout="wide", page_icon="📋")
 
-# --- 2. ESTILO CSS ---
+# --- 2. ESTILO CSS PARA LIMPEZA VISUAL ---
 st.markdown("""
     <style>
     [data-testid="stMetricValue"] { color: #000000 !important; font-weight: 400 !important; }
@@ -41,12 +42,13 @@ with tab_cad:
         posto = c2.selectbox("Posto de Trabalho", ["Posto 1", "Posto 2", "Posto 3", "Posto 4", "Posto 5", "Posto 6"])
         
         c3, c4 = st.columns([3, 1])
-        ativ = c3.text_input("Descrição da Atividade (O que o op. faz?)")
+        ativ = c3.text_input("Descrição da Atividade (Ex: Fixar Placa)")
         tempo = c4.number_input("Tempo (segundos)", min_value=0.1, step=0.5)
         
         btn_add = st.form_submit_button("💾 Salvar Atividade")
         
         if btn_add and ativ:
+            # Gera um ID único baseado na data/hora
             novo_id = int(pd.Timestamp.now().timestamp() * 100)
             nova_linha = pd.DataFrame([{"ID": novo_id, "Produto": produto, "Posto": posto, "Atividade": ativ, "Tempo": tempo}])
             df_tp = pd.concat([df_tp, nova_linha], ignore_index=True)
@@ -64,6 +66,7 @@ with tab_graph:
         df_filtrado = df_tp[df_tp['Produto'] == prod_sel]
         
         if not df_filtrado.empty:
+            # Cálculos de Indicadores de Produção
             tempos_por_posto = df_filtrado.groupby("Posto")["Tempo"].sum().reset_index()
             tempo_total = tempos_por_posto["Tempo"].sum()
             gargalo_valor = tempos_por_posto["Tempo"].max()
@@ -78,6 +81,7 @@ with tab_graph:
 
             st.divider()
 
+            # Ordem dos postos no gráfico
             ordem_postos = ["Posto 1", "Posto 2", "Posto 3", "Posto 4", "Posto 5", "Posto 6"]
             
             fig = px.bar(df_filtrado, 
@@ -89,23 +93,35 @@ with tab_graph:
                          category_orders={"Posto": ordem_postos},
                          color_discrete_sequence=px.colors.qualitative.Bold)
             
+            # Linha Vermelha de Takt Time
             fig.add_hline(y=takt_meta, line_dash="dash", line_color="red", 
                           annotation_text=f"LIMITE TAKT ({takt_meta}s)", annotation_position="top right")
             
             fig.update_layout(showlegend=True, height=600, barmode='stack')
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Selecione um produto para visualizar o gráfico.")
     else:
-        st.info("Cadastre dados na primeira aba para gerar a análise.")
+        st.info("Cadastre dados na aba 'Cadastro' para gerar a análise.")
 
 # --- ABA 3: GERENCIAR DADOS ---
 with tab_dados:
-    st.subheader("Histórico de Atividades")
+    st.subheader("Histórico e Exclusão")
     if not df_tp.empty:
+        st.write("Lista de atividades cadastradas:")
         for i, row in df_tp.iterrows():
             col_dados, col_btn = st.columns([9, 1])
             col_dados.write(f"**ID:** {row['ID']} | **{row['Produto']}** | {row['Posto']} | {row['Atividade']} | {row['Tempo']}s")
             if col_btn.button("🗑️", key=f"del_{row['ID']}"):
                 df_tp = df_tp[df_tp['ID'] != row['ID']]
                 df_tp.to_csv(FILE_TP, index=False)
-                st.success("Removido!")
-                st.rerun()ta apagado o bota verde
+                st.success("Removido com sucesso!")
+                st.rerun()
+        
+        st.divider()
+        if st.button("⚠️ APAGAR TODA A BASE"):
+            if os.path.exists(FILE_TP):
+                os.remove(FILE_TP)
+                st.rerun()
+    else:
+        st.warning("Banco de dados vazio.")
