@@ -3,125 +3,109 @@ import pandas as pd
 import plotly.express as px
 import os
 
-# --- 1. CONFIGURAÇÃO E DADOS ---
-# O arquivo CSV será criado automaticamente na primeira vez que você salvar uma atividade
-FILE_TP = "trabalho_padronizado.csv"
+# --- 1. CONFIGURAÇÃO ---
+FILE_TP = "trabal_padronizado.csv"
 
 def carregar_tp():
     if not os.path.exists(FILE_TP):
         return pd.DataFrame(columns=["ID", "Produto", "Posto", "Atividade", "Tempo"])
-    try:
-        df = pd.read_csv(FILE_TP)
-        return df
-    except:
-        return pd.DataFrame(columns=["ID", "Produto", "Posto", "Atividade", "Tempo"])
+    return pd.read_csv(FILE_TP)
 
-st.set_page_config(page_title="CronoNHS - Trabalho Padronizado", layout="wide", page_icon="📋")
+st.set_page_config(page_title="CronoNHS 2.0 - NHS", layout="wide")
 
-# --- 2. ESTILO CSS PARA LIMPEZA VISUAL ---
+# --- 2. ESTILO CSS ---
 st.markdown("""
     <style>
-    [data-testid="stMetricValue"] { color: #000000 !important; font-weight: 400 !important; }
-    .stButton > button { width: 100%; height: 50px; }
-    .block-container { padding-top: 2rem; }
+    .bolinha { height: 20px; width: 20px; background-color: #ff4b4b; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .card { border: 1px solid #ddd; padding: 15px; border-radius: 10px; background-color: #f9f9f9; }
+    [data-testid="stMetricValue"] { color: #000000 !important; }
     </style>
     """, unsafe_allow_html=True)
 
 df_tp = carregar_tp()
 
-# --- 3. TÍTULO E NAVEGAÇÃO ---
-st.title("📋 CronoNHS - Gestão de Trabalho Padronizado")
-tab_cad, tab_graph, tab_dados = st.tabs(["📝 Cadastro", "📊 Gráfico de Balanceamento (Yamazumi)", "📂 Gerenciar Base"])
+st.title("📋 CronoNHS 2.0 - Gestão de Processos NHS")
 
-# --- ABA 1: CADASTRO DE ATIVIDADES ---
+tab_cad, tab_yamazumi, tab_carta = st.tabs(["📝 Cadastro", "📊 Gráfico Yamazumi (Gantt)", "📍 Carta de Trabalho"])
+
+# --- ABA 1: CADASTRO COM MÚLTIPLAS ATIVIDADES ---
 with tab_cad:
-    st.subheader("Inserir Nova Atividade")
-    with st.form("form_cadastro", clear_on_submit=True):
+    st.subheader("Cadastro de Sequência de Trabalho")
+    with st.form("form_multi"):
         c1, c2 = st.columns(2)
-        produto = c1.selectbox("Produto / Modelo", ["UPS - 1", "UPS - 2", "UPS - 3", "UPS - 4", "ACS - 01", "Outro"])
-        posto = c2.selectbox("Posto de Trabalho", ["Posto 1", "Posto 2", "Posto 3", "Posto 4", "Posto 5", "Posto 6"])
+        prod = c1.selectbox("Produto/UPS", ["UPS - 1", "UPS - 2", "UPS - 3", "UPS - 4", "ACS - 01"])
+        posto_sel = c2.selectbox("Selecione o Posto", ["Posto 1", "Posto 2", "Posto 3", "Posto 4", "Posto 5", "Posto 6"])
         
-        c3, c4 = st.columns([3, 1])
-        ativ = c3.text_input("Descrição da Atividade (Ex: Fixar Placa)")
-        tempo = c4.number_input("Tempo (segundos)", min_value=0.1, step=0.5)
+        st.write("---")
+        st.write("Digite as atividades abaixo (pode preencher várias):")
         
-        btn_add = st.form_submit_button("💾 Salvar Atividade")
+        atividades_data = []
+        for i in range(1, 8): # Permite até 7 atividades por vez
+            ca, ct = st.columns([3, 1])
+            desc = ca.text_input(f"Atividade {i}", key=f"desc_{i}")
+            seg = ct.number_input(f"Tempo {i} (s)", min_value=0.0, step=0.5, key=f"seg_{i}")
+            if desc and seg > 0:
+                atividades_data.append({"ID": int(pd.Timestamp.now().timestamp() + i), "Produto": prod, "Posto": posto_sel, "Atividade": desc, "Tempo": seg})
         
-        if btn_add and ativ:
-            # Gera um ID único baseado na data/hora
-            novo_id = int(pd.Timestamp.now().timestamp() * 100)
-            nova_linha = pd.DataFrame([{"ID": novo_id, "Produto": produto, "Posto": posto, "Atividade": ativ, "Tempo": tempo}])
-            df_tp = pd.concat([df_tp, nova_linha], ignore_index=True)
+        btn_salvar = st.form_submit_button("💾 SALVAR TODAS AS ATIVIDADES")
+        
+        if btn_salvar and atividades_data:
+            novos_dados = pd.DataFrame(atividades_data)
+            df_tp = pd.concat([df_tp, novos_dados], ignore_index=True)
             df_tp.to_csv(FILE_TP, index=False)
-            st.success(f"Adicionado: {ativ} no {posto}")
+            st.success(f"Foram salvas {len(atividades_data)} atividades no {posto_sel}!")
             st.rerun()
 
-# --- ABA 2: GRÁFICO YAMAZUMI E CÁLCULOS ---
-with tab_graph:
+# --- ABA 2: YAMAZUMI DEITADO + TABELA ---
+with tab_yamazumi:
     if not df_tp.empty:
-        col_filtro1, col_filtro2 = st.columns([2, 2])
-        prod_sel = col_filtro1.selectbox("Filtrar Produto para Análise:", df_tp['Produto'].unique())
-        takt_meta = col_filtro2.number_input("Meta de Takt Time (segundos):", min_value=1, value=60)
+        p_sel = st.selectbox("Escolha o Produto:", df_tp['Produto'].unique(), key="sel_p")
+        takt = st.number_input("Takt Time Alvo (s):", value=60)
         
-        df_filtrado = df_tp[df_tp['Produto'] == prod_sel]
+        df_f = df_tp[df_tp['Produto'] == p_sel]
         
-        if not df_filtrado.empty:
-            # Cálculos de Indicadores de Produção
-            tempos_por_posto = df_filtrado.groupby("Posto")["Tempo"].sum().reset_index()
-            tempo_total = tempos_por_posto["Tempo"].sum()
-            gargalo_valor = tempos_por_posto["Tempo"].max()
-            posto_gargalo = tempos_por_posto.loc[tempos_por_posto["Tempo"].idxmax(), "Posto"]
-            
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Tempo Total Processo", f"{tempo_total:.1f}s")
-            m2.metric("Posto Gargalo", posto_gargalo)
-            m3.metric("Tempo do Gargalo", f"{gargalo_valor:.1f}s")
-            cap_hora = int(3600 / gargalo_valor) if gargalo_valor > 0 else 0
-            m4.metric("Capacidade Estimada", f"{cap_hora} pçs/h")
-
-            st.divider()
-
-            # Ordem dos postos no gráfico
-            ordem_postos = ["Posto 1", "Posto 2", "Posto 3", "Posto 4", "Posto 5", "Posto 6"]
-            
-            fig = px.bar(df_filtrado, 
-                         x="Posto", 
-                         y="Tempo", 
-                         color="Atividade", 
-                         title=f"Gráfico de Balanceamento (Yamazumi) - {prod_sel}",
-                         text="Atividade",
-                         category_orders={"Posto": ordem_postos},
-                         color_discrete_sequence=px.colors.qualitative.Bold)
-            
-            # Linha Vermelha de Takt Time
-            fig.add_hline(y=takt_meta, line_dash="dash", line_color="red", 
-                          annotation_text=f"LIMITE TAKT ({takt_meta}s)", annotation_position="top right")
-            
-            fig.update_layout(showlegend=True, height=600, barmode='stack')
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Selecione um produto para visualizar o gráfico.")
+        # Gráfico Horizontal (Deitado)
+        fig = px.bar(df_f, 
+                     y="Posto", x="Tempo", color="Atividade",
+                     orientation='h',
+                     title=f"Balanceamento de Célula - {p_sel}",
+                     category_orders={"Posto": ["Posto 6", "Posto 5", "Posto 4", "Posto 3", "Posto 2", "Posto 1"]},
+                     text="Atividade")
+        
+        fig.add_vline(x=takt, line_dash="dash", line_color="red", annotation_text="TAKT TIME")
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.subheader("📋 Tabela de Atividades x Takt")
+        df_tabela = df_f.copy()
+        df_tabela['Acumulado no Posto'] = df_tabela.groupby('Posto')['Tempo'].cumsum()
+        st.dataframe(df_tabela[["Posto", "Atividade", "Tempo", "Acumulado no Posto"]], use_container_width=True)
     else:
-        st.info("Cadastre dados na aba 'Cadastro' para gerar a análise.")
+        st.info("Aguardando cadastro...")
 
-# --- ABA 3: GERENCIAR DADOS ---
-with tab_dados:
-    st.subheader("Histórico e Exclusão")
+# --- ABA 3: CARTA DE TRABALHO (BOLINHAS) ---
+with tab_carta:
     if not df_tp.empty:
-        st.write("Lista de atividades cadastradas:")
-        for i, row in df_tp.iterrows():
-            col_dados, col_btn = st.columns([9, 1])
-            col_dados.write(f"**ID:** {row['ID']} | **{row['Produto']}** | {row['Posto']} | {row['Atividade']} | {row['Tempo']}s")
-            if col_btn.button("🗑️", key=f"del_{row['ID']}"):
-                df_tp = df_tp[df_tp['ID'] != row['ID']]
-                df_tp.to_csv(FILE_TP, index=False)
-                st.success("Removido com sucesso!")
-                st.rerun()
+        p_sel_c = st.selectbox("Visualizar Fluxo do Produto:", df_tp['Produto'].unique(), key="sel_c")
+        df_c = df_tp[df_tp['Produto'] == p_sel_c]
         
-        st.divider()
-        if st.button("⚠️ APAGAR TODA A BASE"):
-            if os.path.exists(FILE_TP):
-                os.remove(FILE_TP)
-                st.rerun()
+        st.subheader(f"Mapa da Célula: {p_sel_c}")
+        colunas_postos = st.columns(6)
+        
+        postos_lista = ["Posto 1", "Posto 2", "Posto 3", "Posto 4", "Posto 5", "Posto 6"]
+        
+        for i, p_nome in enumerate(postos_lista):
+            with colunas_postos[i]:
+                # Conta quantas atividades tem no posto
+                qtd = len(df_c[df_c['Posto'] == p_nome])
+                st.markdown(f"**{p_nome}**")
+                st.write(f"{qtd} atividades")
+                
+                # Gera as bolinhas visuais
+                bolinhas_html = "".join(['<div class="bolinha"></div>' for _ in range(qtd)])
+                st.markdown(bolinhas_html, unsafe_allow_html=True)
+                
+                # Lista as atividades embaixo
+                for a in df_c[df_c['Posto'] == p_nome]['Atividade']:
+                    st.caption(f"- {a}")
     else:
-        st.warning("Banco de dados vazio.")
+        st.info("Cadastre os postos para ver a carta de trabalho.")
