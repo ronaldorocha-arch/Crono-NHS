@@ -48,6 +48,12 @@ tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados", "🖥️ 2. Dashboard A3 (
 
 # --- ABA 1: INSERÇÃO DE DADOS ---
 with tab_cad:
+    st.subheader("Informações do Documento")
+    col_elab, col_depto = st.columns(2)
+    elaborador_input = col_elab.text_input("Elaborado por:", value=st.session_state.get('elaborador', "Engenharia"))
+    depto_input = col_depto.text_input("Departamento/Setor:", value=st.session_state.get('departamento', "Melhoria de Processos"))
+    
+    st.write("---")
     st.subheader("Configuração da Célula")
     
     col_prod, col_postos, col_takt = st.columns([2, 1, 1])
@@ -61,6 +67,8 @@ with tab_cad:
     epis_selecionados = st.multiselect("Selecione os EPIs", lista_epis, default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato Seg.", "🧤 Luvas"])
     
     # Salvando configurações gerais na sessão
+    st.session_state['elaborador'] = elaborador_input
+    st.session_state['departamento'] = depto_input
     st.session_state['takt'] = takt_input
     st.session_state['epis'] = epis_selecionados
 
@@ -95,8 +103,12 @@ with tab_dash:
     if not df_tp.empty:
         p_sel = st.selectbox("Visualizar Produto:", df_tp['Produto'].unique())
         df_f = df_tp[df_tp['Produto'] == p_sel].copy()
+        
+        # Recuperando as variáveis salvas na sessão
         takt = st.session_state.get('takt', 261.0)
         epis = st.session_state.get('epis', [])
+        elaborador = st.session_state.get('elaborador', 'Engenharia')
+        departamento = st.session_state.get('departamento', 'Melhoria de Processos')
         
         df_f = df_f.sort_values(by=["Posto"])
         
@@ -107,11 +119,11 @@ with tab_dash:
         else:
             tc_total, tc_max = 0, 0
         
-        # 1. CABEÇALHO
+        # 1. CABEÇALHO (Agora com as variáveis dinâmicas)
         st.markdown(f"<div class='caixa-cabecalho' style='font-size:18px;'>CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         col_cab1, col_cab2, col_cab3 = st.columns(3)
-        with col_cab1: st.markdown("<div class='caixa-cabecalho'>Elaborado por: Engenharia</div>", unsafe_allow_html=True)
-        with col_cab2: st.markdown("<div class='caixa-cabecalho'>Depto: Melhoria de Processos</div>", unsafe_allow_html=True)
+        with col_cab1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {elaborador}</div>", unsafe_allow_html=True)
+        with col_cab2: st.markdown(f"<div class='caixa-cabecalho'>Depto: {departamento}</div>", unsafe_allow_html=True)
         with col_cab3: st.markdown(f"<div class='caixa-cabecalho'>Tempo Processamento: {tc_total}s | Tempo de Ciclo: {tc_max}s</div>", unsafe_allow_html=True)
         
         st.write("")
@@ -143,12 +155,10 @@ with tab_dash:
 
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                # Paleta de cores estendida para garantir que não falte cor se houver mais de 3 postos
                 cores_postos = ["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0", "#f44336", "#3f51b5", "#009688"]
                 fig_gantt = px.bar(df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto", orientation='h', color_discrete_sequence=cores_postos)
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 fig_gantt.update_layout(yaxis={'autorange': 'reversed', 'visible': False}, showlegend=False, height=250, margin=dict(l=0, r=0, t=0, b=0))
-                # Parâmetro key adicionado por segurança
                 st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
 
         # --- COLUNA DIREITA: GBO E CAPACIDADE ---
@@ -160,7 +170,6 @@ with tab_dash:
                 fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
                 fig_gbo.update_layout(height=220, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
-                # Parâmetro key adicionado por segurança
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
             
             # --- GRÁFICOS DE PIZZA (Porcentagem por Posto) ---
@@ -173,7 +182,6 @@ with tab_dash:
                         fig_pie.update_traces(textposition='inside', textinfo='percent')
                         fig_pie.update_layout(height=120, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
                         with cols_pie[i]:
-                            # A SOLUÇÃO ESTÁ AQUI: o parâmetro key único para cada iteração do loop
                             st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{i}_{p_nome}")
                             st.markdown(f"<div style='text-align:center; font-size:10px;'>{p_nome}</div>", unsafe_allow_html=True)
             
