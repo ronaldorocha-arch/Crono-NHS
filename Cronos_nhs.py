@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import os
 
 # --- 1. CONFIGURAÇÃO ---
@@ -30,43 +29,83 @@ df_tp = carregar_tp()
 
 st.title("📋 CronoNHS 2.0")
 
-# Abas principais
 tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados", "🖥️ 2. Dashboard Completo (A3)"])
 
-# --- ABA 1: INSERÇÃO DE DADOS ---
+# --- ABA 1: INSERÇÃO DE DADOS DINÂMICA ---
 with tab_cad:
-    st.subheader("Cadastro de Atividades")
-    with st.form("form_multi"):
-        c1, c2, c3 = st.columns([2, 2, 1])
-        prod = c1.selectbox("Produto/Família", ["UPS - 02", "COMPLUS 1200"])
-        posto_sel = c2.selectbox("Posto de Trabalho", ["Posto 1", "Posto 2", "Posto 3"])
-        takt_input = c3.number_input("Takt Time Alvo (s)", min_value=1.0, value=261.0, step=1.0)
-        
-        st.write("---")
-        atividades_data = []
-        for i in range(1, 6):
-            col_desc, col_tempo, col_valor = st.columns([3, 1, 1.5])
-            desc = col_desc.text_input(f"Atividade {i}", key=f"desc_{i}")
-            seg = col_tempo.number_input(f"Tempo {i} (s)", min_value=0.0, step=0.5, key=f"seg_{i}")
-            val = col_valor.selectbox(f"Classificação {i}", ["Agrega", "Semi Agrega", "Não Agrega"], key=f"val_{i}")
+    st.subheader("Configuração da Peça e Linha")
+    
+    # Layout de configuração inicial
+    col_modo, col_prod, col_postos, col_takt = st.columns([1, 2, 1, 1])
+    
+    produtos_existentes = df_tp['Produto'].unique().tolist()
+    modo = col_modo.radio("Ação:", ["Nova Peça", "Editar Existente"])
+    
+    if modo == "Nova Peça":
+        prod = col_prod.text_input("Nome da Nova Peça / Produto", value="Produto X")
+    else:
+        if produtos_existentes:
+            prod = col_prod.selectbox("Selecione a Peça", produtos_existentes)
+        else:
+            st.warning("Nenhuma peça cadastrada. Crie uma nova.")
+            prod = "N/A"
             
-            if desc and seg > 0:
-                atividades_data.append({"Produto": prod, "Posto": posto_sel, "Atividade": desc, "Tempo (s)": seg, "Classificação": val})
-        
-        btn_salvar = st.form_submit_button("💾 SALVAR ATIVIDADES")
-        if btn_salvar and atividades_data:
-            novos_dados = pd.DataFrame(atividades_data)
-            df_tp = pd.concat([df_tp, novos_dados], ignore_index=True)
-            df_tp.to_csv(FILE_TP, index=False)
-            st.success("Salvo com sucesso!")
-            st.rerun()
-            
+    qtd_postos = col_postos.number_input("Quantidade de Postos", min_value=1, max_value=20, value=3)
+    takt_input = col_takt.number_input("Takt Time Alvo (s)", min_value=1.0, value=261.0, step=1.0)
     st.session_state['takt'] = takt_input
 
-# --- ABA 2: DASHBOARD COMPLETO (Baseado na imagem 5.jpg) ---
+    st.write("---")
+    
+    if prod != "N/A":
+        st.subheader(f"Cadastro de Atividades: {prod}")
+        st.markdown("💡 **Dica:** Você pode adicionar novas linhas clicando na tabela abaixo ou colar dados diretamente do Excel!")
+        
+        # Gera a lista dinâmica de postos com base na quantidade escolhida
+        lista_postos = [f"Posto {i}" for i in range(1, int(qtd_postos) + 1)]
+        
+        # Filtra os dados existentes ou cria um dataframe vazio para edição
+        df_prod = df_tp[df_tp["Produto"] == prod].copy()
+        if df_prod.empty:
+            df_prod = pd.DataFrame(columns=["Posto", "Atividade", "Tempo (s)", "Classificação"])
+        else:
+            df_prod = df_prod[["Posto", "Atividade", "Tempo (s)", "Classificação"]]
+        
+        # Tabela interativa
+        edited_df = st.data_editor(
+            df_prod,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Posto": st.column_config.SelectboxColumn("Posto", options=lista_postos, required=True),
+                "Atividade": st.column_config.TextColumn("Descrição da Atividade", required=True),
+                "Tempo (s)": st.column_config.NumberColumn("Tempo (s)", min_value=0.1, format="%.1f", required=True),
+                "Classificação": st.column_config.SelectboxColumn("Valor Agregado", options=["Agrega", "Semi Agrega", "Não Agrega"], required=True)
+            },
+            key="editor_atividades"
+        )
+        
+        if st.button("💾 SALVAR PEÇA / ATIVIDADES"):
+            # Adiciona o nome do produto de volta aos dados editados
+            edited_df["Produto"] = prod
+            
+            # Remove os dados antigos desse produto específico
+            df_tp_clean = df_tp[df_tp["Produto"] != prod]
+            
+            # Junta com os novos dados editados
+            df_tp_final = pd.concat([df_tp_clean, edited_df], ignore_index=True)
+            
+            # Salva no CSV
+            df_tp_final.to_csv(FILE_TP, index=False)
+            st.success(f"Dados do produto '{prod}' salvos com sucesso!")
+            st.rerun()
+
+# --- ABA 2: DASHBOARD COMPLETO (A3) ---
 with tab_dash:
     if not df_tp.empty:
-        p_sel = df_tp['Produto'].iloc[-1]
+        # Selecionar qual peça visualizar no Dashboard
+        p_sel = st.selectbox("Selecione a peça para visualizar o Dashboard:", df_tp['Produto'].unique())
+        st.write("---")
+        
         df_f = df_tp[df_tp['Produto'] == p_sel].copy()
         takt = st.session_state.get('takt', 261.0)
         
@@ -74,10 +113,10 @@ with tab_dash:
         df_f = df_f.sort_values(by=["Posto"])
         df_f['Início (s)'] = df_f.groupby('Posto')['Tempo (s)'].cumsum() - df_f['Tempo (s)']
         
-        tempo_processamento = df_f['Tempo (s)'].sum()
-        tempo_ciclo = df_f.groupby('Posto')['Tempo (s)'].sum().max()
+        tempo_processamento = df_f['Tempo (s)'].sum().round(1)
+        tempo_ciclo = df_f.groupby('Posto')['Tempo (s)'].sum().max().round(1)
         
-        # 1. CABEÇALHO (Igual à imagem)
+        # 1. CABEÇALHO
         st.markdown(f"<div class='caixa-cabecalho'>CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         col_cab1, col_cab2, col_cab3, col_cab4 = st.columns(4)
         with col_cab1: st.markdown("<div class='caixa-cabecalho'>Elaborado por: Engenharia</div>", unsafe_allow_html=True)
@@ -90,51 +129,38 @@ with tab_dash:
         # DIVISÃO DA TELA: ESQUERDA E DIREITA
         col_esq, col_dir = st.columns([1.2, 1])
         
-        # ==========================================
-        # LADO ESQUERDO (Carta de Trabalho + Gantt)
-        # ==========================================
+        # LADO ESQUERDO
         with col_esq:
             # CARTA DE TRABALHO
             st.markdown("<div class='titulo-secao'>CARTA DE TRABALHO</div>", unsafe_allow_html=True)
             
-            postos = sorted(df_f['Posto'].unique())
+            postos = df_f['Posto'].unique()
             cols_postos = st.columns(len(postos) if len(postos) > 0 else 1)
             
             for i, p_nome in enumerate(postos):
                 with cols_postos[i]:
                     st.markdown(f"<div style='text-align:center; font-weight:bold;'>{p_nome}</div>", unsafe_allow_html=True)
-                    # Define a classe da bolinha baseada no índice do posto (para mudar a cor)
                     classe_bola = f"bolinha-{(i % 3) + 1}"
-                    
                     qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
                     bolinhas_html = "".join([f"<div class='{classe_bola}'>{j+1}</div>" for j in range(qtd_ativ)])
-                    
-                    st.markdown(f"<div class='caixa-posto'>{bolinhas_html}<br><br>👤 (Operador)</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='caixa-posto'>{bolinhas_html}<br><br>👤</div>", unsafe_allow_html=True)
 
-            # TABELA COMBINADA (GANTT CASCATA)
+            # TABELA COMBINADA
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA</div>", unsafe_allow_html=True)
             
             fig_gantt = px.bar(
                 df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto",
                 orientation='h', text="Tempo (s)",
-                color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb"] # Cores batendo com as bolinhas
+                color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0", "#f44336"]
             )
             fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red", line_width=3)
-            fig_gantt.update_layout(
-                yaxis={'autorange': 'reversed'}, # Inverte o eixo Y para a Atividade 1 ficar no topo
-                showlegend=False, 
-                height=350,
-                margin=dict(l=0, r=0, t=10, b=0)
-            )
+            fig_gantt.update_layout(yaxis={'autorange': 'reversed'}, showlegend=False, height=350, margin=dict(l=0, r=0, t=10, b=0))
             st.plotly_chart(fig_gantt, use_container_width=True)
 
-        # ==========================================
-        # LADO DIREITO (GBO + Quadro de Capacidade)
-        # ==========================================
+        # LADO DIREITO
         with col_dir:
-            # GBO (YAMAZUMI)
+            # GBO
             st.markdown("<div class='titulo-secao'>GBO</div>", unsafe_allow_html=True)
-            
             color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
             
             fig_gbo = px.bar(
@@ -159,4 +185,4 @@ with tab_dash:
             st.dataframe(df_cap, use_container_width=True, hide_index=True)
 
     else:
-        st.info("Cadastre os dados na aba 1 para gerar o Dashboard.")
+        st.info("Nenhuma peça cadastrada. Vá para a aba 1 para começar.")
