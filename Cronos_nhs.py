@@ -22,24 +22,59 @@ st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
 # --- CSS PROFISSIONAL & CORREÇÃO DE IMPRESSÃO ---
 st.markdown("""
     <style>
+    /* ---------------------------------------------------
+       HACK PARA IMPRESSÃO A3 PERFEITA (SEM CORTES)
+    --------------------------------------------------- */
     @media print {
         @page { size: A3 landscape; margin: 10mm; }
-        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"] { display: none !important; }
-        * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
-        html, body, .stApp { width: 100% !important; max-width: 100% !important; background-color: white !important; margin: 0 !important; padding: 0 !important;}
-        .block-container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+        
+        /* Esconde menus do Streamlit */
+        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"] { 
+            display: none !important; 
+        }
+        
+        /* Força as cores a aparecerem no papel */
+        * { 
+            -webkit-print-color-adjust: exact !important; 
+            color-adjust: exact !important; 
+        }
+        
+        /* DESTRAVA A LARGURA DO STREAMLIT PARA CABER NA FOLHA */
+        html, body, .stApp { 
+            width: 100% !important; 
+            max-width: 100% !important; 
+            background-color: white !important; 
+            margin: 0 !important; 
+            padding: 0 !important;
+        }
+        
+        .block-container { 
+            max-width: 100% !important; 
+            width: 100% !important; 
+            padding: 0 !important; 
+            margin: 0 !important; 
+        }
+        
+        /* Aplica um leve zoom out para garantir que o lado direito não corte */
         body { zoom: 0.85; }
+        
+        /* Impede que as colunas quebrem de forma errada */
         [data-testid="column"] { min-width: 0 !important; }
     }
     
+    /* ---------------------------------------------------
+       ESTILOS VISUAIS DO DASHBOARD
+    --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
     .titulo-secao { text-align: center; font-weight: bold; font-size: 14px; margin: 15px 0 10px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
     
+    /* Legendas e Caixas */
     .caixa-padrao { border: 1px solid #000; padding: 8px; margin-bottom: 10px; font-size: 11px; background: #fff;}
     .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 22px; text-align: center; margin: 3px; display: inline-block; }
     
+    /* Carta de Trabalho UI */
     .layout-linha { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 10px; }
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 800px; margin: 0 auto;}
     
@@ -77,21 +112,11 @@ with tab_cad:
     prod = c1.text_input("Produto / Família", value="UPS - 02")
     qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=3)
     takt_input = c3.number_input("Takt Time (s)", min_value=1.0, value=261.0)
-    layout_tipo = c4.selectbox("Formato do Layout Genérico", ["Em Linha (Reta)", "Célula em U"])
+    layout_tipo = c4.selectbox("Formato do Layout", ["Em Linha (Reta)", "Célula em U"])
     
     epis_selecionados = st.multiselect("EPIs Necessários", ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas", "🎧 Protetor", "🧢 Touca"], default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas"])
     
-    st.write("---")
-    st.markdown("**Imagem do Layout da Célula (Opcional)**")
-    st.info("Se você desenhou a planta da célula no CAD/Visio, anexe a foto aqui para sobrepor o layout genérico.")
-    layout_upload = st.file_uploader("Anexar imagem (JPG/PNG)", type=["png", "jpg", "jpeg"])
-    
-    # Atualiza a sessão
     st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'epis': epis_selecionados, 'layout': layout_tipo})
-    if layout_upload is not None:
-        st.session_state['layout_img'] = layout_upload.getvalue()
-    elif 'layout_img' not in st.session_state:
-        st.session_state['layout_img'] = None
 
     st.write("---")
     sub_tab_ativ, sub_tab_postos = st.tabs(["⏱️ Tempos e Atividades", "🏭 Configuração Física (Flow Rack, Andon, WIP)"])
@@ -114,7 +139,7 @@ with tab_cad:
         )
         
     with sub_tab_postos:
-        st.markdown("**Mapeamento do Layout Genérico:**")
+        st.markdown("**Mapeamento do Layout da Linha:**")
         df_cfg_prod = df_cfg[df_cfg["Produto"] == prod].copy()
         if df_cfg_prod.empty:
             df_cfg_prod = pd.DataFrame({"Posto": lista_postos, "Flow Rack": ["Não"]*len(lista_postos), "Andon": ["Não"]*len(lista_postos), "WIP (Estoque)": [0]*len(lista_postos)})
@@ -132,6 +157,7 @@ with tab_cad:
     if st.button("💾 SALVAR PRODUTO E CONFIGURAÇÕES", type="primary", use_container_width=True):
         edited_df["Produto"] = prod
         pd.concat([df_tp[df_tp["Produto"] != prod], edited_df], ignore_index=True).to_csv(FILE_TP, index=False)
+        
         edited_cfg["Produto"] = prod
         pd.concat([df_cfg[df_cfg["Produto"] != prod], edited_cfg], ignore_index=True).to_csv(FILE_POSTOS, index=False)
         st.success("Tudo salvo com sucesso!")
@@ -160,54 +186,51 @@ with tab_dash:
         with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s</div>", unsafe_allow_html=True)
         st.write("")
         
-        # GRID DO A3 
-        col_esq, col_meio, col_dir = st.columns([0.4, 2.0, 1.2])
+        # GRID DO A3 (Ajustado levemente para balancear melhor a tela)
+        col_esq, col_meio, col_dir = st.columns([0.8, 2.0, 1.4])
         
-        # --- ESQUERDA (EPIs) ---
+        # --- ESQUERDA ---
         with col_esq:
+            st.markdown("<div class='caixa-padrao'><b>LEGENDA (Layout)</b><br><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon (Sinalização)<br><br><span class='icon-legenda' style='background:#666;'></span> Estoque Intermediário<br><br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> Flow Rack (Ponto de Uso)</div>", unsafe_allow_html=True)
+            st.markdown("<div class='caixa-padrao'><b>LEGENDA (Valor)</b><br><br><span class='icon-legenda' style='background:#00ff00;'></span> Agrega Valor<br><br><span class='icon-legenda' style='background:#ffff00;'></span> Semi Agrega<br><br><span class='icon-legenda' style='background:#ff9900;'></span> Não Agrega</div>", unsafe_allow_html=True)
             st.markdown("<div class='caixa-padrao' style='text-align:center;'><b>EPI'S EXIGIDOS</b><br>", unsafe_allow_html=True)
-            for epi in st.session_state.get('epis', []): 
-                st.markdown(f"<span class='epi-text'>{epi.split(' ')[0]}</span>", unsafe_allow_html=True)
+            for epi in st.session_state.get('epis', []): st.markdown(f"<span class='epi-text'>{epi.split(' ')[0]}</span>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
         # --- MEIO: CARTA DE TRABALHO E GANTT ---
         with col_meio:
-            st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO ({st.session_state.get('layout')})</div>", unsafe_allow_html=True)
             
-            # Checa se o usuário subiu uma imagem própria. Se sim, exibe ela. Se não, gera os bloquinhos html automáticos.
-            if st.session_state.get('layout_img') is not None:
-                st.image(st.session_state['layout_img'], use_container_width=True)
-            else:
-                postos = df_f['Posto'].unique()
-                html_layout = f"<div class='{'layout-u' if st.session_state.get('layout') == 'Célula em U' else 'layout-linha'}'>"
+            postos = df_f['Posto'].unique()
+            html_layout = f"<div class='{'layout-u' if st.session_state.get('layout') == 'Célula em U' else 'layout-linha'}'>"
+            
+            postos_display = list(postos)
+            if st.session_state.get('layout') == 'Célula em U' and len(postos_display) > 2:
+                metade = (len(postos_display) + 1) // 2
+                fileira1 = postos_display[:metade]
+                fileira2 = list(reversed(postos_display[metade:]))
+                postos_display = fileira1 + fileira2
+            
+            for i, p_nome in enumerate(postos_display):
+                cfg_p = df_c[df_c['Posto'] == p_nome]
+                tem_flow = "Sim" in cfg_p['Flow Rack'].values
+                tem_andon = "Sim" in cfg_p['Andon'].values
+                wip = int(cfg_p['WIP (Estoque)'].values[0]) if not cfg_p.empty else 0
                 
-                postos_display = list(postos)
-                if st.session_state.get('layout') == 'Célula em U' and len(postos_display) > 2:
-                    metade = (len(postos_display) + 1) // 2
-                    fileira1 = postos_display[:metade]
-                    fileira2 = list(reversed(postos_display[metade:]))
-                    postos_display = fileira1 + fileira2
+                idx_cor = (list(postos).index(p_nome) % 5) + 1
+                qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
+                bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
                 
-                for i, p_nome in enumerate(postos_display):
-                    cfg_p = df_c[df_c['Posto'] == p_nome]
-                    tem_flow = "Sim" in cfg_p['Flow Rack'].values
-                    tem_andon = "Sim" in cfg_p['Andon'].values
-                    wip = int(cfg_p['WIP (Estoque)'].values[0]) if not cfg_p.empty else 0
-                    
-                    idx_cor = (list(postos).index(p_nome) % 5) + 1
-                    qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
-                    bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
-                    
-                    html_posto = f"<div class='caixa-posto'>"
-                    if tem_andon: html_posto += "<div class='andon'></div>"
-                    if tem_flow: html_posto += "<div class='flow-rack'>FLOW RACK</div>"
-                    html_posto += f"<b>{p_nome}</b><hr style='margin:5px 0;'>{bolinhas}<div class='operador'>👤</div>"
-                    if wip > 0: html_posto += f"<div class='wip-badge'>{wip}</div>"
-                    html_posto += "</div>"
-                    html_layout += html_posto
-                    
-                html_layout += "</div>"
-                st.markdown(html_layout, unsafe_allow_html=True)
+                html_posto = f"<div class='caixa-posto'>"
+                if tem_andon: html_posto += "<div class='andon'></div>"
+                if tem_flow: html_posto += "<div class='flow-rack'>FLOW RACK</div>"
+                html_posto += f"<b>{p_nome}</b><hr style='margin:5px 0;'>{bolinhas}<div class='operador'>👤</div>"
+                if wip > 0: html_posto += f"<div class='wip-badge'>{wip}</div>"
+                html_posto += "</div>"
+                html_layout += html_posto
+                
+            html_layout += "</div>"
+            st.markdown(html_layout, unsafe_allow_html=True)
 
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
@@ -216,39 +239,15 @@ with tab_dash:
                 fig_gantt.update_layout(yaxis={'autorange': 'reversed', 'visible': False}, showlegend=False, height=220, margin=dict(l=0, r=0, t=0, b=0))
                 st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
 
-        # --- DIREITA: GBO, PIZZA, LEGENDAS E CAPACIDADE ---
+        # --- DIREITA: GBO E CAPACIDADE ---
         with col_dir:
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             if not df_f.empty:
                 color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
-                
-                # Gráfico GBO (Barras Empilhadas)
                 fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
                 fig_gbo.update_layout(height=240, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
-                
-                # Gráficos de Pizza (Porcentagem de Valor Agregado em baixo do GBO)
-                postos_unicos = df_f['Posto'].unique()
-                if len(postos_unicos) > 0:
-                    cols_pie = st.columns(len(postos_unicos))
-                    for i, p_nome in enumerate(postos_unicos):
-                        df_pie = df_f[df_f['Posto'] == p_nome].groupby('Classificação')['Tempo (s)'].sum().reset_index()
-                        if not df_pie.empty:
-                            fig_pie = px.pie(df_pie, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map, hole=0.4)
-                            fig_pie.update_traces(textposition='inside', textinfo='percent')
-                            fig_pie.update_layout(height=100, margin=dict(l=0, r=0, t=5, b=0), showlegend=False)
-                            with cols_pie[i]:
-                                st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{i}_{p_nome}")
-                                st.markdown(f"<div style='text-align:center; font-size:10px;'><b>{p_nome}</b></div>", unsafe_allow_html=True)
-            
-            # Legendas em baixo dos gráficos de valor
-            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-            col_leg1, col_leg2 = st.columns(2)
-            with col_leg1:
-                st.markdown("<div class='caixa-padrao'><b>Valor</b><br><span class='icon-legenda' style='background:#00ff00;'></span> Agrega Valor<br><span class='icon-legenda' style='background:#ffff00;'></span> Semi Agrega<br><span class='icon-legenda' style='background:#ff9900;'></span> Não Agrega</div>", unsafe_allow_html=True)
-            with col_leg2:
-                st.markdown("<div class='caixa-padrao'><b>Layout</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#666;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> P. Uso</div>", unsafe_allow_html=True)
             
             st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
