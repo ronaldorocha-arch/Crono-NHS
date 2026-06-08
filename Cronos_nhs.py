@@ -11,178 +11,159 @@ def carregar_tp():
         return pd.DataFrame(columns=["Produto", "Posto", "Atividade", "Tempo (s)", "Classificação"])
     return pd.read_csv(FILE_TP)
 
-st.set_page_config(page_title="CronoNHS 2.0 - Trabalho Padronizado", layout="wide")
+st.set_page_config(page_title="CronoNHS 2.0", layout="wide")
 
-# --- 2. ESTILO CSS PARA O DASHBOARD ---
+# --- CSS PARA IMPRESSÃO A3 E VISUAL ---
 st.markdown("""
     <style>
+    /* CSS PARA TRANSFORMAR A TELA EM UM A3 NA HORA DE IMPRIMIR (Ctrl+P) */
+    @media print {
+        @page { size: A3 landscape; margin: 10mm; }
+        header, footer, .stApp > header { display: none !important; }
+        .stTabs [data-baseweb="tab-list"] { display: none !important; }
+        #MainMenu {visibility: hidden;}
+    }
+    
     .caixa-cabecalho { border: 1px solid #000; padding: 10px; text-align: center; font-weight: bold; font-size: 14px; background-color: #f8f9fa;}
-    .titulo-secao { text-align: center; font-weight: bold; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #333; text-transform: uppercase;}
-    .bolinha-1 { height: 25px; width: 25px; background-color: #00bcd4; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin: 3px; font-size: 12px;}
-    .bolinha-2 { height: 25px; width: 25px; background-color: #4caf50; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin: 3px; font-size: 12px;}
-    .bolinha-3 { height: 25px; width: 25px; background-color: #e040fb; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin: 3px; font-size: 12px;}
-    .caixa-posto { border: 2px solid #ccc; padding: 10px; min-height: 120px; text-align: center;}
+    .titulo-secao { text-align: center; font-weight: bold; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #333; text-transform: uppercase; border-bottom: 2px solid #ccc;}
+    
+    /* Legenda e EPIs */
+    .caixa-legenda { border: 1px solid #000; padding: 10px; margin-bottom: 15px; font-size: 12px;}
+    .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px;}
+    .epi-text { font-size: 28px; text-align: center; margin: 5px; }
+    
+    .bolinha-1 { height: 25px; width: 25px; background-color: #00bcd4; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin: 3px;}
+    .bolinha-2 { height: 25px; width: 25px; background-color: #4caf50; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin: 3px;}
+    .bolinha-3 { height: 25px; width: 25px; background-color: #e040fb; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin: 3px;}
+    .caixa-posto { border: 1px solid #000; padding: 10px; min-height: 120px; text-align: center; background-color: #fff;}
     </style>
     """, unsafe_allow_html=True)
 
 df_tp = carregar_tp()
-
 st.title("📋 CronoNHS 2.0")
 
-tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados", "🖥️ 2. Dashboard Completo (A3)"])
+tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados", "🖥️ 2. Dashboard A3 (Ctrl+P para PDF)"])
 
-# --- ABA 1: INSERÇÃO DE DADOS DINÂMICA ---
+# --- ABA 1: INSERÇÃO DE DADOS ---
 with tab_cad:
-    st.subheader("Configuração da Peça e Linha")
+    st.subheader("Configuração da Célula")
     
-    # Layout de configuração inicial
-    col_modo, col_prod, col_postos, col_takt = st.columns([1, 2, 1, 1])
+    col_prod, col_postos, col_takt = st.columns([2, 1, 1])
+    prod = col_prod.text_input("Nome da Peça / Produto", value="UPS - 02")
+    qtd_postos = col_postos.number_input("Qtd de Postos", min_value=1, value=3)
+    takt_input = col_takt.number_input("Takt Time Alvo (s)", min_value=1.0, value=261.0)
     
-    produtos_existentes = df_tp['Produto'].unique().tolist()
-    modo = col_modo.radio("Ação:", ["Nova Peça", "Editar Existente"])
+    st.write("---")
+    st.markdown("**EPIs Necessários para a Célula:**")
+    lista_epis = ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato Seg.", "🧤 Luvas", "🎧 Protetor Auricular", "🧢 Touca"]
+    epis_selecionados = st.multiselect("Selecione os EPIs", lista_epis, default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato Seg.", "🧤 Luvas"])
     
-    if modo == "Nova Peça":
-        prod = col_prod.text_input("Nome da Nova Peça / Produto", value="Produto X")
-    else:
-        if produtos_existentes:
-            prod = col_prod.selectbox("Selecione a Peça", produtos_existentes)
-        else:
-            st.warning("Nenhuma peça cadastrada. Crie uma nova.")
-            prod = "N/A"
-            
-    qtd_postos = col_postos.number_input("Quantidade de Postos", min_value=1, max_value=20, value=3)
-    takt_input = col_takt.number_input("Takt Time Alvo (s)", min_value=1.0, value=261.0, step=1.0)
     st.session_state['takt'] = takt_input
+    st.session_state['epis'] = epis_selecionados
 
     st.write("---")
+    st.markdown("Insira os tempos (Copie e cole do Excel se preferir):")
     
-    if prod != "N/A":
-        st.subheader(f"Cadastro de Atividades: {prod}")
-        st.markdown("💡 **Dica:** Você pode adicionar novas linhas clicando na tabela abaixo ou colar dados diretamente do Excel!")
-        
-        # Gera a lista dinâmica de postos com base na quantidade escolhida
-        lista_postos = [f"Posto {i}" for i in range(1, int(qtd_postos) + 1)]
-        
-        # Filtra os dados existentes ou cria um dataframe vazio para edição
-        df_prod = df_tp[df_tp["Produto"] == prod].copy()
-        if df_prod.empty:
-            df_prod = pd.DataFrame(columns=["Posto", "Atividade", "Tempo (s)", "Classificação"])
-        else:
-            df_prod = df_prod[["Posto", "Atividade", "Tempo (s)", "Classificação"]]
-        
-        # Tabela interativa
-        edited_df = st.data_editor(
-            df_prod,
-            num_rows="dynamic",
-            use_container_width=True,
-            column_config={
-                "Posto": st.column_config.SelectboxColumn("Posto", options=lista_postos, required=True),
-                "Atividade": st.column_config.TextColumn("Descrição da Atividade", required=True),
-                "Tempo (s)": st.column_config.NumberColumn("Tempo (s)", min_value=0.1, format="%.1f", required=True),
-                "Classificação": st.column_config.SelectboxColumn("Valor Agregado", options=["Agrega", "Semi Agrega", "Não Agrega"], required=True)
-            },
-            key="editor_atividades"
-        )
-        
-        if st.button("💾 SALVAR PEÇA / ATIVIDADES"):
-            # Adiciona o nome do produto de volta aos dados editados
-            edited_df["Produto"] = prod
-            
-            # Remove os dados antigos desse produto específico
-            df_tp_clean = df_tp[df_tp["Produto"] != prod]
-            
-            # Junta com os novos dados editados
-            df_tp_final = pd.concat([df_tp_clean, edited_df], ignore_index=True)
-            
-            # Salva no CSV
-            df_tp_final.to_csv(FILE_TP, index=False)
-            st.success(f"Dados do produto '{prod}' salvos com sucesso!")
-            st.rerun()
+    lista_postos = [f"Posto {i}" for i in range(1, int(qtd_postos) + 1)]
+    df_prod = df_tp[df_tp["Produto"] == prod].copy()
+    if df_prod.empty:
+        df_prod = pd.DataFrame(columns=["Posto", "Atividade", "Tempo (s)", "Classificação"])
+    
+    edited_df = st.data_editor(
+        df_prod, num_rows="dynamic", use_container_width=True,
+        column_config={
+            "Posto": st.column_config.SelectboxColumn("Posto", options=lista_postos),
+            "Atividade": st.column_config.TextColumn("Descrição da Atividade"),
+            "Tempo (s)": st.column_config.NumberColumn("Tempo (s)", format="%.1f"),
+            "Classificação": st.column_config.SelectboxColumn("Valor", options=["Agrega", "Semi Agrega", "Não Agrega"])
+        }
+    )
+    
+    if st.button("💾 SALVAR PRODUTO"):
+        edited_df["Produto"] = prod
+        df_tp_clean = df_tp[df_tp["Produto"] != prod]
+        pd.concat([df_tp_clean, edited_df], ignore_index=True).to_csv(FILE_TP, index=False)
+        st.success("Salvo!")
+        st.rerun()
 
-# --- ABA 2: DASHBOARD COMPLETO (A3) ---
+# --- ABA 2: DASHBOARD COMPLETO ---
 with tab_dash:
     if not df_tp.empty:
-        # Selecionar qual peça visualizar no Dashboard
-        p_sel = st.selectbox("Selecione a peça para visualizar o Dashboard:", df_tp['Produto'].unique())
-        st.write("---")
-        
+        p_sel = st.selectbox("Visualizar Produto:", df_tp['Produto'].unique())
         df_f = df_tp[df_tp['Produto'] == p_sel].copy()
         takt = st.session_state.get('takt', 261.0)
+        epis = st.session_state.get('epis', [])
         
-        # Cálculos de Início e Fim para a Tabela Combinada
         df_f = df_f.sort_values(by=["Posto"])
         df_f['Início (s)'] = df_f.groupby('Posto')['Tempo (s)'].cumsum() - df_f['Tempo (s)']
         
-        tempo_processamento = df_f['Tempo (s)'].sum().round(1)
-        tempo_ciclo = df_f.groupby('Posto')['Tempo (s)'].sum().max().round(1)
+        tc_total = df_f['Tempo (s)'].sum().round(1)
+        tc_max = df_f.groupby('Posto')['Tempo (s)'].sum().max().round(1)
         
         # 1. CABEÇALHO
-        st.markdown(f"<div class='caixa-cabecalho'>CÉLULA {p_sel}</div>", unsafe_allow_html=True)
-        col_cab1, col_cab2, col_cab3, col_cab4 = st.columns(4)
+        st.markdown(f"<div class='caixa-cabecalho' style='font-size:18px;'>CÉLULA {p_sel}</div>", unsafe_allow_html=True)
+        col_cab1, col_cab2, col_cab3 = st.columns(3)
         with col_cab1: st.markdown("<div class='caixa-cabecalho'>Elaborado por: Engenharia</div>", unsafe_allow_html=True)
-        with col_cab2: st.markdown("<div class='caixa-cabecalho'>Depto: Melhoria Contínua</div>", unsafe_allow_html=True)
-        with col_cab3: st.markdown(f"<div class='caixa-cabecalho'>Tempo Processamento: {tempo_processamento}s<br>Tempo de Ciclo: {tempo_ciclo}s</div>", unsafe_allow_html=True)
-        with col_cab4: st.markdown("<div class='caixa-cabecalho'>Revisão: 00</div>", unsafe_allow_html=True)
+        with col_cab2: st.markdown("<div class='caixa-cabecalho'>Depto: Melhoria de Processos</div>", unsafe_allow_html=True)
+        with col_cab3: st.markdown(f"<div class='caixa-cabecalho'>Tempo Processamento: {tc_total}s | Tempo de Ciclo: {tc_max}s</div>", unsafe_allow_html=True)
         
-        st.write("---")
+        st.write("")
         
-        # DIVISÃO DA TELA: ESQUERDA E DIREITA
-        col_esq, col_dir = st.columns([1.2, 1])
+        # DIVISÃO DA TELA: ESQUERDA (Legenda) | MEIO (Carta/Gantt) | DIREITA (GBO/Quadro)
+        col_esq, col_meio, col_dir = st.columns([0.5, 1.5, 1.2])
         
-        # LADO ESQUERDO
+        # --- COLUNA ESQUERDA: LEGENDA E EPIs ---
         with col_esq:
-            # CARTA DE TRABALHO
-            st.markdown("<div class='titulo-secao'>CARTA DE TRABALHO</div>", unsafe_allow_html=True)
+            st.markdown("<div class='caixa-legenda'><b>LEGENDA</b><br><br><span class='icon-legenda' style='background:red;'></span> ANDON<br><br><span class='icon-legenda' style='background:#555;'></span> ESTOQUE<br><br><span class='icon-legenda' style='border:1px solid #000;'></span> PONTO DE USO</div>", unsafe_allow_html=True)
             
+            st.markdown("<div class='caixa-legenda' style='text-align:center;'><b>EPI'S NECESSÁRIOS</b><br><br>", unsafe_allow_html=True)
+            for epi in epis:
+                st.markdown(f"<div class='epi-text'>{epi.split(' ')[0]}</div>", unsafe_allow_html=True) # Pega só o emoji
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # --- COLUNA MEIO: CARTA DE TRABALHO E GANTT ---
+        with col_meio:
+            st.markdown("<div class='titulo-secao'>CARTA DE TRABALHO</div>", unsafe_allow_html=True)
             postos = df_f['Posto'].unique()
             cols_postos = st.columns(len(postos) if len(postos) > 0 else 1)
             
             for i, p_nome in enumerate(postos):
                 with cols_postos[i]:
-                    st.markdown(f"<div style='text-align:center; font-weight:bold;'>{p_nome}</div>", unsafe_allow_html=True)
                     classe_bola = f"bolinha-{(i % 3) + 1}"
                     qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
                     bolinhas_html = "".join([f"<div class='{classe_bola}'>{j+1}</div>" for j in range(qtd_ativ)])
-                    st.markdown(f"<div class='caixa-posto'>{bolinhas_html}<br><br>👤</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='caixa-posto'><b>{p_nome}</b><hr>{bolinhas_html}<br><br>👤</div>", unsafe_allow_html=True)
 
-            # TABELA COMBINADA
-            st.markdown("<div class='titulo-secao'>TABELA COMBINADA</div>", unsafe_allow_html=True)
-            
-            fig_gantt = px.bar(
-                df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto",
-                orientation='h', text="Tempo (s)",
-                color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0", "#f44336"]
-            )
-            fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red", line_width=3)
-            fig_gantt.update_layout(yaxis={'autorange': 'reversed'}, showlegend=False, height=350, margin=dict(l=0, r=0, t=10, b=0))
+            st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
+            fig_gantt = px.bar(df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto", orientation='h', color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb"])
+            fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
+            fig_gantt.update_layout(yaxis={'autorange': 'reversed', 'visible': False}, showlegend=False, height=250, margin=dict(l=0, r=0, t=0, b=0))
             st.plotly_chart(fig_gantt, use_container_width=True)
 
-        # LADO DIREITO
+        # --- COLUNA DIREITA: GBO E CAPACIDADE ---
         with col_dir:
-            # GBO
-            st.markdown("<div class='titulo-secao'>GBO</div>", unsafe_allow_html=True)
+            st.markdown("<div class='titulo-secao'>GBO & VALOR AGREGADO</div>", unsafe_allow_html=True)
             color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
             
-            fig_gbo = px.bar(
-                df_f, x="Posto", y="Tempo (s)", color="Classificação",
-                color_discrete_map=color_map, text="Tempo (s)", barmode="stack"
-            )
-            fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red", line_width=3)
-            fig_gbo.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0))
+            fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
+            fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
+            fig_gbo.update_layout(height=220, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
             st.plotly_chart(fig_gbo, use_container_width=True)
             
-            # QUADRO DE CAPACIDADE
+            # --- GRÁFICOS DE PIZZA (Porcentagem por Posto) ---
+            cols_pie = st.columns(len(postos))
+            for i, p_nome in enumerate(postos):
+                df_pie = df_f[df_f['Posto'] == p_nome].groupby('Classificação')['Tempo (s)'].sum().reset_index()
+                fig_pie = px.pie(df_pie, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map, hole=0.4)
+                fig_pie.update_traces(textposition='inside', textinfo='percent')
+                fig_pie.update_layout(height=120, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
+                with cols_pie[i]:
+                    st.plotly_chart(fig_pie, use_container_width=True)
+                    st.markdown(f"<div style='text-align:center; font-size:10px;'>{p_nome}</div>", unsafe_allow_html=True)
+            
             st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
-            
             df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
-            df_cap.rename(columns={'Tempo (s)': 'TC (cronometrado)'}, inplace=True)
-            df_cap['TC (saturação)'] = (df_cap['TC (cronometrado)'] * 1.10).round(0)
-            df_cap['TAKT'] = takt
-            df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC (saturação)']).apply(lambda x: round(x, 1))
-            df_cap['OPERADORES'] = 1
-            df_cap['Capacidade (%)'] = ((df_cap['TC (saturação)'] / df_cap['TAKT']) * 100).round(2).astype(str) + "%"
-            
-            st.dataframe(df_cap, use_container_width=True, hide_index=True)
-
-    else:
-        st.info("Nenhuma peça cadastrada. Vá para a aba 1 para começar.")
+            df_cap['TC(sat)'] = (df_cap['Tempo (s)'] * 1.10).round(0)
+            df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC(sat)']).apply(lambda x: int(x))
+            df_cap['Capacidade (%)'] = ((df_cap['TC(sat)'] / takt) * 100).round(1).astype(str) + "%"
+            st.dataframe(df_cap[["Posto", "Tempo (s)", "TC(sat)", "CAP. DIÁRIA", "Capacidade (%)"]], use_container_width=True, hide_index=True)
