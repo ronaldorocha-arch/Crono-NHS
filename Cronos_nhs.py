@@ -19,16 +19,52 @@ def carregar_cfg_postos():
 
 st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
 
-# --- CSS PROFISSIONAL ---
+# --- CSS PROFISSIONAL & CORREÇÃO DE IMPRESSÃO ---
 st.markdown("""
     <style>
+    /* ---------------------------------------------------
+       HACK PARA IMPRESSÃO A3 PERFEITA (SEM CORTES)
+    --------------------------------------------------- */
     @media print {
-        @page { size: A3 landscape; margin: 5mm; }
-        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu { display: none !important; }
-        * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
-        .bloco-print { page-break-inside: avoid; }
+        @page { size: A3 landscape; margin: 10mm; }
+        
+        /* Esconde menus do Streamlit */
+        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"] { 
+            display: none !important; 
+        }
+        
+        /* Força as cores a aparecerem no papel */
+        * { 
+            -webkit-print-color-adjust: exact !important; 
+            color-adjust: exact !important; 
+        }
+        
+        /* DESTRAVA A LARGURA DO STREAMLIT PARA CABER NA FOLHA */
+        html, body, .stApp { 
+            width: 100% !important; 
+            max-width: 100% !important; 
+            background-color: white !important; 
+            margin: 0 !important; 
+            padding: 0 !important;
+        }
+        
+        .block-container { 
+            max-width: 100% !important; 
+            width: 100% !important; 
+            padding: 0 !important; 
+            margin: 0 !important; 
+        }
+        
+        /* Aplica um leve zoom out para garantir que o lado direito não corte */
+        body { zoom: 0.85; }
+        
+        /* Impede que as colunas quebrem de forma errada */
+        [data-testid="column"] { min-width: 0 !important; }
     }
     
+    /* ---------------------------------------------------
+       ESTILOS VISUAIS DO DASHBOARD
+    --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
     .titulo-secao { text-align: center; font-weight: bold; font-size: 14px; margin: 15px 0 10px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
@@ -46,7 +82,6 @@ st.markdown("""
     .flow-rack { width: 100%; height: 15px; background: #bbb; border: 1px solid #555; margin-bottom: 10px; font-size: 9px; line-height: 15px; color: #000;}
     .andon { position: absolute; top: -10px; left: -10px; width: 20px; height: 20px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red;}
     .wip-badge { position: absolute; top: 40%; right: -15px; width: 25px; height: 25px; background-color: #666; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10; border: 2px solid #fff;}
-    .wip-badge-u { position: absolute; bottom: -15px; left: 40%; width: 25px; height: 25px; background-color: #666; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10; border: 2px solid #fff;}
     
     .bolinha { display: inline-flex; height: 22px; width: 22px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 11px;}
     .b-1 { background-color: #00bcd4; }
@@ -81,7 +116,6 @@ with tab_cad:
     
     epis_selecionados = st.multiselect("EPIs Necessários", ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas", "🎧 Protetor", "🧢 Touca"], default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas"])
     
-    # Salvar na sessão
     st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'epis': epis_selecionados, 'layout': layout_tipo})
 
     st.write("---")
@@ -152,8 +186,8 @@ with tab_dash:
         with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s</div>", unsafe_allow_html=True)
         st.write("")
         
-        # GRID DO A3
-        col_esq, col_meio, col_dir = st.columns([0.6, 2, 1.4])
+        # GRID DO A3 (Ajustado levemente para balancear melhor a tela)
+        col_esq, col_meio, col_dir = st.columns([0.8, 2.0, 1.4])
         
         # --- ESQUERDA ---
         with col_esq:
@@ -170,7 +204,6 @@ with tab_dash:
             postos = df_f['Posto'].unique()
             html_layout = f"<div class='{'layout-u' if st.session_state.get('layout') == 'Célula em U' else 'layout-linha'}'>"
             
-            # Ordenação do Layout U (ex: 1,2,3 na frente, 4,5 atrás invertidos)
             postos_display = list(postos)
             if st.session_state.get('layout') == 'Célula em U' and len(postos_display) > 2:
                 metade = (len(postos_display) + 1) // 2
@@ -179,18 +212,15 @@ with tab_dash:
                 postos_display = fileira1 + fileira2
             
             for i, p_nome in enumerate(postos_display):
-                # Busca as configs do posto
                 cfg_p = df_c[df_c['Posto'] == p_nome]
                 tem_flow = "Sim" in cfg_p['Flow Rack'].values
                 tem_andon = "Sim" in cfg_p['Andon'].values
                 wip = int(cfg_p['WIP (Estoque)'].values[0]) if not cfg_p.empty else 0
                 
-                # Renderiza Atividades
                 idx_cor = (list(postos).index(p_nome) % 5) + 1
                 qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
                 bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
                 
-                # Monta a caixa (HTML)
                 html_posto = f"<div class='caixa-posto'>"
                 if tem_andon: html_posto += "<div class='andon'></div>"
                 if tem_flow: html_posto += "<div class='flow-rack'>FLOW RACK</div>"
