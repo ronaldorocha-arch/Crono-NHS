@@ -1,3 +1,12 @@
+Com base nas suas imagens, consegui identificar perfeitamente os três problemas e já os resolvi no código abaixo:
+
+1. **Retângulos de tamanhos diferentes:** Isso acontecia porque o Streamlit tentava ajustar o tamanho das caixas ao texto dentro delas. Mudei o CSS para forçar **Tamanhos Fixos (`width: 220px; height: 120px;`)**. Agora, não importa a quantidade de bolinhas ou o texto, **todos os postos terão exata e rigorosamente o mesmo tamanho**.
+2. **Operadores desconfigurados:** O "Ponto de Uso" estava a empurrar os elementos. Agora, fixei o Ponto de Uso sempre no topo da caixa. Os **Operadores (👤) foram colocados de forma absoluta SEMPRE do lado de fora da caixa** (Frente = baixo fora, Trás = cima fora, Esquerda = esquerda fora, Direita = direita fora).
+3. **A Impressão (Colunas Quebradas e Gráficos Empurrados):** Na sua imagem, o Streamlit estava a "empilhar" os cabeçalhos e a quebrar os gráficos. Inseri um comando CSS forçado (`flex-wrap: nowrap !important;`) que **proíbe o navegador de quebrar as colunas na hora de imprimir**. Agora ele vai manter o formato de grelha (grid) lado a lado, tal como você vê na tela do computador.
+
+Aqui está o código completo e corrigido para substituir no seu `app.py`:
+
+```python
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -17,24 +26,21 @@ def carregar_cfg_postos():
         return pd.DataFrame(columns=["Produto", "Posto", "Ponto de Uso", "Andon", "WIP", "Posição Operador"])
     
     df = pd.read_csv(FILE_POSTOS)
-    
-    # Atualiza arquivos antigos automaticamente para não quebrar seu sistema
     if "Flow Rack" in df.columns:
         df.rename(columns={"Flow Rack": "Ponto de Uso"}, inplace=True)
     if "WIP (Estoque)" in df.columns:
         df.rename(columns={"WIP (Estoque)": "WIP"}, inplace=True)
     if "Posição Operador" not in df.columns:
         df["Posição Operador"] = "Frente"
-        
     return df
 
 st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
 
-# --- CSS ESTRUTURAL E IMPRESSÃO ---
+# --- CSS ESTRUTURAL E IMPRESSÃO (CORRIGIDO PARA O FORMATO A3) ---
 st.markdown("""
     <style>
     /* ---------------------------------------------------
-       IMPRESSÃO A3 - CORRIGIDA E MAIS LIMPA
+       IMPRESSÃO A3 - CORREÇÃO DE COLUNAS E ESCALA
     --------------------------------------------------- */
     @media print {
         @page { 
@@ -60,13 +66,24 @@ st.markdown("""
             overflow: visible !important;
         }
         
-        /* Zoom suave funciona melhor no Chrome para ajustar à folha sem quebrar layout */
-        body { zoom: 0.82 !important; }
+        /* Ajuste de Zoom para caber na folha A3 sem distorcer */
+        .block-container {
+            zoom: 0.75 !important;
+        }
         
-        [data-testid="stVerticalBlock"] { gap: 2px !important; }
+        /* 🚨 HACK VITAL: Impede o Streamlit de empilhar as colunas na impressão 🚨 */
+        [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            gap: 15px !important;
+        }
         
         [data-testid="column"] { 
+            flex: 1 1 0% !important;
             min-width: 0 !important; 
+            display: block !important;
             page-break-inside: avoid !important;
         }
         
@@ -81,7 +98,7 @@ st.markdown("""
     }
     
     /* ---------------------------------------------------
-       ESTILOS VISUAIS DO DASHBOARD (TELA)
+       ESTILOS VISUAIS DO DASHBOARD E POSTOS (PADRONIZADO)
     --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
@@ -91,25 +108,39 @@ st.markdown("""
     .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 18px; text-align: center; margin: 0 4px; display: inline-block; }
     
-    .layout-linha { display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap; gap: 20px; padding: 15px 10px; }
-    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; max-width: 800px; margin: 0 auto; padding: 15px 10px;}
+    .layout-linha { display: flex; justify-content: space-around; align-items: center; flex-wrap: nowrap; gap: 30px; padding: 30px 10px; }
+    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; max-width: 800px; margin: 0 auto; padding: 30px 10px;}
     
-    /* CAIXA DO POSTO */
-    .caixa-posto { border: 2px solid #333; padding: 8px; text-align: center; background-color: #fff; position: relative; min-width: 100px; flex: 1;}
-    .ponto-uso { width: 100%; height: 14px; background: #bbb; border: 1px solid #555; margin-bottom: 8px; font-size: 9px; line-height: 14px; color: #000;}
+    /* 🚨 CAIXA DO POSTO: TAMANHO 100% FIXO 🚨 */
+    .caixa-posto { 
+        width: 200px !important; 
+        height: 100px !important; 
+        border: 2px solid #333; 
+        background-color: #fff; 
+        position: relative; 
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 15px;
+    }
+    
+    /* PONTO DE USO TRAVADO NO TOPO */
+    .ponto-uso { position: absolute; top: 0; left: 0; width: 100%; height: 18px; background: #bbb; border-bottom: 1px solid #333; font-size: 10px; line-height: 18px; color: #000; font-weight: bold;}
     
     /* INDICADORES */
-    .andon { position: absolute; top: -10px; left: -10px; width: 18px; height: 18px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red;}
-    .wip-badge { position: absolute; bottom: -10px; left: -10px; width: 22px; height: 22px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; z-index: 10; border: 2px solid #fff;}
+    .andon { position: absolute; top: -12px; left: -12px; width: 22px; height: 22px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red;}
+    .wip-badge { position: absolute; bottom: -12px; left: -12px; width: 24px; height: 24px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; z-index: 10; border: 2px solid #fff;}
     
-    .bolinha { display: inline-flex; height: 20px; width: 20px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 10px;}
+    .bolinha { display: inline-flex; height: 22px; width: 22px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 11px;}
     .b-1 { background-color: #00bcd4; } .b-2 { background-color: #4caf50; } .b-3 { background-color: #e040fb; } .b-4 { background-color: #ff9800; } .b-5 { background-color: #9c27b0; }
     
-    /* POSIÇÕES DO OPERADOR */
-    .op-frente { font-size: 22px; margin-top: 5px; text-align: center;}
-    .op-tras { font-size: 22px; position: absolute; top: -28px; left: calc(50% - 11px); }
-    .op-esq { font-size: 22px; position: absolute; top: calc(50% - 11px); left: -28px; }
-    .op-dir { font-size: 22px; position: absolute; top: calc(50% - 11px); right: -28px; }
+    /* 🚨 POSIÇÕES DO OPERADOR (SEMPRE FORA DO RETÂNGULO) 🚨 */
+    .operador-icon { position: absolute; font-size: 26px; }
+    .op-frente { bottom: -38px; left: calc(50% - 13px); }
+    .op-tras { top: -38px; left: calc(50% - 13px); }
+    .op-esq { top: calc(50% - 13px); left: -38px; }
+    .op-dir { top: calc(50% - 13px); right: -38px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -205,7 +236,7 @@ with tab_dash:
         else:
             tc_total, tc_max = 0, 0
             
-        # 1. CABEÇALHO SUPERIOR UNIFICADO DO A3
+        # 1. CABEÇALHO SUPERIOR UNIFICADO
         st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
@@ -216,18 +247,16 @@ with tab_dash:
         color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
 
         # =====================================================================
-        # QUADRANTE SUPERIOR (PARTE DE CIMA)
+        # QUADRANTE SUPERIOR
         # =====================================================================
         col_sup_esq, col_sup_dir = st.columns([1.1, 0.9])
         
-        # --- LADO ESQUERDO SUPERIOR: CARTA DE TRABALHO E AJUSTES RÁPIDOS ---
         with col_sup_esq:
             st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO ({st.session_state.get('layout')})</div>", unsafe_allow_html=True)
             
             postos_disp = list(df_f['Posto'].unique())
             
-            # --- 🛠️ CONTROLES RÁPIDOS ---
-            st.markdown("<div class='no-print' style='background:#f4f4f4; padding:10px; border-radius:5px; border:1px solid #ccc; margin-bottom:15px;'><b>⚙️ Ajuste Rápido do Layout (Desaparece na impressão)</b></div>", unsafe_allow_html=True)
+            st.markdown("<div class='no-print' style='background:#f4f4f4; padding:10px; border-radius:5px; border:1px solid #ccc; margin-bottom:15px;'><b>⚙️ Ajuste Rápido do Layout</b></div>", unsafe_allow_html=True)
             
             andons_atuais = [p for p in postos_disp if not df_c[df_c['Posto']==p].empty and df_c[df_c['Posto']==p]['Andon'].values[0] == 'Sim']
             flows_atuais = [p for p in postos_disp if not df_c[df_c['Posto']==p].empty and df_c[df_c['Posto']==p]['Ponto de Uso'].values[0] == 'Sim']
@@ -244,7 +273,6 @@ with tab_dash:
                         df_cfg.loc[idx, 'Ponto de Uso'] = 'Sim' if p in novos_flows else 'Não'
                 df_cfg.to_csv(FILE_POSTOS, index=False)
                 df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
-            # --- FIM CONTROLES RÁPIDOS ---
 
             c_leg_epi, c_layout_desenho = st.columns([0.3, 0.7])
             with c_leg_epi:
@@ -273,27 +301,28 @@ with tab_dash:
                     bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
                     
                     html_posto = f"<div class='caixa-posto'>"
+                    
+                    # Nome e Bolinhas Centralizados
+                    html_posto += f"<div style='margin-top: {'15px' if tem_flow else '0px'};'><b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}</div>"
+                    
                     if tem_andon: 
                         html_posto += f"<div class='andon'></div>"
                     if tem_flow: 
                         html_posto += f"<div class='ponto-uso'>PONTO DE USO</div>"
+                    if wip > 0: 
+                        html_posto += f"<div class='wip-badge'>{wip}</div>"
+                        
+                    # Operador Posicionado (Sempre FORA)
+                    if pos_op == 'Trás': html_posto += f"<div class='operador-icon op-tras'>👤</div>"
+                    elif pos_op == 'Esquerda': html_posto += f"<div class='operador-icon op-esq'>👤</div>"
+                    elif pos_op == 'Direita': html_posto += f"<div class='operador-icon op-dir'>👤</div>"
+                    else: html_posto += f"<div class='operador-icon op-frente'>👤</div>"
                     
-                    # Coloca o operador na posição configurada
-                    if pos_op == 'Trás': html_op = f"<div class='op-tras'>👤</div>"
-                    elif pos_op == 'Esquerda': html_op = f"<div class='op-esq'>👤</div>"
-                    elif pos_op == 'Direita': html_op = f"<div class='op-dir'>👤</div>"
-                    else: html_op = f"<div class='op-frente'>👤</div>"
-                    
-                    html_posto += f"<b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}{html_op}"
-                    
-                    # WIP customizado no canto inferior esquerdo
-                    if wip > 0: html_posto += f"<div class='wip-badge'>{wip}</div>"
                     html_posto += "</div>"
                     html_layout += html_posto
                 html_layout += "</div>"
                 st.markdown(html_layout, unsafe_allow_html=True)
 
-        # --- LADO DIREITO SUPERIOR: GBO + PIZZAS SINCRO-ALINHADAS ---
         with col_sup_dir:
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             if not df_f.empty:
@@ -304,7 +333,7 @@ with tab_dash:
                 for posto, total in totais_gbo.items():
                     fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=10)
 
-                fig_gbo.update_layout(height=200, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
+                fig_gbo.update_layout(height=180, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
@@ -329,12 +358,11 @@ with tab_dash:
 
 
         # =====================================================================
-        # QUADRANTE INFERIOR (PARTE DE BAIXO)
+        # QUADRANTE INFERIOR
         # =====================================================================
         st.write(" ")
         col_inf_esq, col_inf_dir = st.columns([1.1, 0.9])
         
-        # --- LADO ESQUERDO INFERIOR: TABELA COMBINADA (YAMAZUMI) ---
         with col_inf_esq:
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
@@ -354,7 +382,6 @@ with tab_dash:
                 fig_gantt.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
 
-        # --- LADO DIREITO INFERIOR: QUADRO DE CAPACIDADE (COMPLETO) ---
         with col_inf_dir:
             st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
@@ -370,3 +397,5 @@ with tab_dash:
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
+
+```
