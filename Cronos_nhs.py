@@ -13,67 +13,68 @@ def carregar_tp():
     return pd.read_csv(FILE_TP)
 
 def carregar_cfg_postos():
-    colunas_padrao = ["Produto", "Posto", "Flow Rack", "Andon", "WIP (Estoque)"]
     if not os.path.exists(FILE_POSTOS):
-        return pd.DataFrame(columns=colunas_padrao)
-    
-    df = pd.read_csv(FILE_POSTOS)
-    for col in colunas_padrao:
-        if col not in df.columns:
-            df[col] = 0 if col == "WIP (Estoque)" else "Não"
-    return df
+        return pd.DataFrame(columns=["Produto", "Posto", "Flow Rack", "Andon", "WIP (Estoque)"])
+    return pd.read_csv(FILE_POSTOS)
 
-st.set_page_config(page_title="CronoNHS 2.0 - A4", layout="wide")
+st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
 
-# --- CSS PROFISSIONAL & CORREÇÃO DE IMPRESSÃO A4 ---
+# --- CSS PROFISSIONAL & CORREÇÃO DE IMPRESSÃO ---
 st.markdown("""
     <style>
     /* ---------------------------------------------------
-       HACK PARA IMPRESSÃO A4 PAISAGEM PERFEITA
+       HACK PARA IMPRESSÃO A3 PERFEITA (SEM CORTES)
     --------------------------------------------------- */
     @media print {
-        @page { 
-            size: A4 landscape; 
-            margin: 5mm; 
-        }
+        @page { size: A3 landscape; margin: 10mm; }
         
-        /* Oculta tudo que não deve aparecer na folha impressa */
-        header, footer, [data-testid="stSidebar"], 
-        [data-baseweb="tab-list"], /* Abas */
-        [data-testid="stSelectbox"], /* Seletor de Célula */
-        h1 /* Título principal CronoNHS */ { 
+        /* Esconde menus do Streamlit */
+        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"] { 
             display: none !important; 
         }
         
-        /* Aplica a margem retangular direto no container do Streamlit */
-        .block-container { 
-            width: 100% !important; 
-            max-width: 100% !important; 
-            padding: 8mm !important;
-            margin: 0 !important; 
-            border: 3px solid #000 !important; /* BORDA GLOBAL DA FOLHA */
-            background-color: white !important;
-            box-sizing: border-box !important;
+        /* Força as cores a aparecerem no papel */
+        * { 
+            -webkit-print-color-adjust: exact !important; 
+            color-adjust: exact !important; 
         }
         
-        /* Ajuste fino do zoom para caber certinho no A4 */
-        body { zoom: 0.72; }
+        /* DESTRAVA A LARGURA DO STREAMLIT PARA CABER NA FOLHA */
+        html, body, .stApp { 
+            width: 100% !important; 
+            max-width: 100% !important; 
+            background-color: white !important; 
+            margin: 0 !important; 
+            padding: 0 !important;
+        }
         
-        /* Evita quebras anormais */
+        .block-container { 
+            max-width: 100% !important; 
+            width: 100% !important; 
+            padding: 0 !important; 
+            margin: 0 !important; 
+        }
+        
+        /* Aplica um leve zoom out para garantir que o lado direito não corte */
+        body { zoom: 0.85; }
+        
+        /* Impede que as colunas quebrem de forma errada */
         [data-testid="column"] { min-width: 0 !important; }
     }
     
     /* ---------------------------------------------------
-       ESTILOS VISUAIS DO DASHBOARD (TELA)
+       ESTILOS VISUAIS DO DASHBOARD
     --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
     .titulo-secao { text-align: center; font-weight: bold; font-size: 14px; margin: 15px 0 10px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
     
+    /* Legendas e Caixas */
     .caixa-padrao { border: 1px solid #000; padding: 8px; margin-bottom: 10px; font-size: 11px; background: #fff;}
     .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 20px; text-align: center; margin: 0 5px; display: inline-block; }
     
+    /* Carta de Trabalho UI */
     .layout-linha { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 10px; }
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 800px; margin: 0 auto;}
     
@@ -98,7 +99,7 @@ df_cfg = carregar_cfg_postos()
 
 st.title("📋 CronoNHS 2.0 - Engenharia de Processos")
 
-tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashboard A4 (Ctrl+P para PDF)"])
+tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashboard A3 (Ctrl+P para PDF)"])
 
 # --- ABA 1: INSERÇÃO DE DADOS ---
 with tab_cad:
@@ -107,17 +108,16 @@ with tab_cad:
     depto = col_info2.text_input("Departamento:", value=st.session_state.get('depto', "Melhoria Contínua"))
     
     st.write("---")
-    c1, c2, c3, c4, c5, c6 = st.columns([1.5, 1, 1, 1, 1, 1.5])
+    c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1.5])
     prod = c1.text_input("Produto / Família", value="UPS - 02")
-    qtd_postos = c2.number_input("Nº Postos", min_value=1, value=3)
+    qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=3)
     takt_input = c3.number_input("Takt Time (s)", min_value=1.0, value=261.0)
-    demanda_input = c4.number_input("Demanda", min_value=1, value=116)
-    tempo_disp_input = c5.number_input("Tempo Disp. (s)", min_value=1, value=30312) 
-    layout_tipo = c6.selectbox("Layout", ["Em Linha (Reta)", "Célula em U"])
+    demanda_input = c4.number_input("Demanda Diária", min_value=1, value=116)
+    layout_tipo = c5.selectbox("Formato do Layout", ["Em Linha (Reta)", "Célula em U"])
     
     epis_selecionados = st.multiselect("EPIs Necessários", ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas", "🎧 Protetor", "🧢 Touca"], default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas"])
     
-    st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'demanda': demanda_input, 'tempo_disp': tempo_disp_input, 'epis': epis_selecionados, 'layout': layout_tipo})
+    st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'demanda': demanda_input, 'epis': epis_selecionados, 'layout': layout_tipo})
 
     st.write("---")
     sub_tab_ativ, sub_tab_postos = st.tabs(["⏱️ Tempos e Atividades", "🏭 Configuração Física (Flow Rack, Andon, WIP)"])
@@ -173,14 +173,13 @@ with tab_dash:
         
         takt = st.session_state.get('takt', 261.0)
         demanda = st.session_state.get('demanda', 116)
-        tempo_disp = st.session_state.get('tempo_disp', 30312)
         
         if not df_f.empty:
             df_f['Início (s)'] = df_f.groupby('Posto')['Tempo (s)'].cumsum() - df_f['Tempo (s)']
             tc_total, tc_max = df_f['Tempo (s)'].sum().round(1), df_f.groupby('Posto')['Tempo (s)'].sum().max().round(1)
         else:
             tc_total, tc_max = 0, 0
-        
+            
         # CABEÇALHO
         st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         cc1, cc2, cc3 = st.columns(3)
@@ -189,13 +188,14 @@ with tab_dash:
         with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
         st.write("")
         
-        # GRID DO A4
+        # GRID DO A3
         col_esq, col_meio, col_dir = st.columns([0.8, 2.0, 1.4])
         
         # --- ESQUERDA ---
         with col_esq:
             st.markdown("<div class='caixa-padrao'><b>LEGENDA (Layout)</b><br><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon (Sinalização)<br><br><span class='icon-legenda' style='background:#666;'></span> Estoque Intermediário<br><br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> Flow Rack (Ponto de Uso)</div>", unsafe_allow_html=True)
             
+            # EPIs agora em linha (inline) para ocupar menos espaço
             epis_html = "".join([f"<span class='epi-text'>{epi.split(' ')[0]}</span>" for epi in st.session_state.get('epis', [])])
             st.markdown(f"<div class='caixa-padrao' style='text-align:center;'><b>EPI'S EXIGIDOS:</b><br>{epis_html}</div>", unsafe_allow_html=True)
 
@@ -236,11 +236,13 @@ with tab_dash:
 
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
+                # Modificado para mostrar textos nas barras e eixo y (atividades)
                 fig_gantt = px.bar(df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto", 
                                    orientation='h', text="Tempo (s)",
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 
+                # Ocultar legendas extras, mostrar eixo y, altura dinâmica para caber as atividades
                 altura_grafico = max(250, len(df_f) * 25)
                 fig_gantt.update_layout(
                     yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
@@ -263,6 +265,7 @@ with tab_dash:
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
+                # Legenda customizada para GBO sob o gráfico
                 st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 10px;'>"
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
                             "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
@@ -271,18 +274,17 @@ with tab_dash:
             
             st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
+                # Remodelagem completa do quadro para bater com o layout exigido
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
                 df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC (cronometrado)'}, inplace=True)
                 
                 df_cap['TC (saturação)'] = (df_cap['TC (cronometrado)'] * 1.10).round(0).astype(int)
                 df_cap['TAKT'] = int(takt)
                 
-                df_cap['CAP. DIÁRIA'] = (tempo_disp / df_cap['TC (saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
+                # Evita divisão por zero
+                df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC (saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
                 df_cap['OPERADOR RES'] = 1
-                
-                # CÁLCULO DA CAPACIDADE DE ACORDO COM O SEU EXCEL
-                df_cap['Capacidade (%)'] = (((tempo_disp / df_cap['TAKT']) / df_cap['CAP. DIÁRIA']) * 100).round(2).astype(str) + "%"
-                
+                df_cap['Capacidade (saturação) %'] = ((df_cap['TC (saturação)'] / takt) * 100).round(2).astype(str) + "%"
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
