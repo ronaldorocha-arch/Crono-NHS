@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import os
 
-# --- 1. CONFIGURAÇÃO ---
+# --- 1. CONFIGURAÇÃO DE FICHEIROS/DADOS ---
 FILE_TP = "trabalho_padronizado_dados.csv"
 FILE_POSTOS = "config_postos.csv"
 
@@ -19,7 +19,7 @@ def carregar_cfg_postos():
 
 st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
 
-# --- CSS PROFISSIONAL & HACK ULTRA ESTRITO DE IMPRESSÃO EM 1 PÁGINA ---
+# --- HACK ULTRA ESTRITO DE CSS PARA IMPRESSÃO EM 1 PÁGINA A3 ---
 st.markdown("""
     <style>
     /* ---------------------------------------------------
@@ -31,18 +31,18 @@ st.markdown("""
             margin: 0mm !important; 
         }
         
-        /* Esconde menus do Streamlit, Título Principal e Legenda lateral solta */
-        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .legenda-lateral-print { 
+        /* Esconde menus do Streamlit, Abas de navegação e o Título Principal (h1) */
+        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1 { 
             display: none !important; 
         }
         
-        /* Força as cores a aparecerem no papel */
+        /* Força as cores dos gráficos a aparecerem no papel */
         * { 
             -webkit-print-color-adjust: exact !important; 
             color-adjust: exact !important; 
         }
         
-        /* Destrava larguras, zera paddings e remove rolagens indesejadas */
+        /* Destrava larguras, elimina paddings e remove barras de rolagem */
         html, body, .stApp, .block-container { 
             width: 100% !important; 
             max-width: 100% !important; 
@@ -52,32 +52,32 @@ st.markdown("""
             overflow: visible !important;
         }
         
-        /* Margem sutil nas bordas da folha física */
+        /* Margem física sutil nas bordas da folha impressa */
         .block-container {
             padding: 5mm 8mm 0mm 8mm !important;
         }
         
-        /* Remove espaçamentos exagerados entre blocos do Streamlit */
+        /* Comprime os espaços vazios entre os blocos nativos do Streamlit */
         [data-testid="stVerticalBlock"] {
             gap: 2px !important;
         }
         
-        /* ESCALA GLOBAL: Reduz proporcionalmente para travar estritamente em 1 página */
+        /* ESCALA GLOBAL: Reduz proporcionalmente todo o painel para travar estritamente em 1 página */
         .stMain {
-            transform: scale(0.70) !important;
+            transform: scale(0.68) !important;
             transform-origin: top left !important;
-            width: 142.8% !important; /* Compensa a perda de largura gerada pelo scale(0.70) */
+            width: 147% !important; /* Compensa a perda de largura gerada pelo scale(0.68) */
             height: auto !important;
             page-break-inside: avoid !important;
         }
         
-        /* Impede que as colunas e tabelas quebrem linhas ou criem páginas extras */
+        /* Impede que as colunas quebrem linhas ou criem páginas extra */
         [data-testid="column"] { 
             min-width: 0 !important; 
             page-break-inside: avoid !important;
         }
         
-        /* Garante exibição por inteiro do Quadro de Capacidade (sem scroll) */
+        /* Garante a exibição por inteiro do Quadro de Capacidade (elimina o scroll) */
         .stDataFrame, [data-testid="stDataFrame"], [data-testid="stGridVirtualizer"] {
             width: 100% !important;
             overflow: visible !important;
@@ -95,16 +95,16 @@ st.markdown("""
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
     .titulo-secao { text-align: center; font-weight: bold; font-size: 14px; margin: 5px 0 8px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
     
-    /* Legendas e Caixas */
+    /* Legendas e Caixas de Informação */
     .caixa-padrao { border: 1px solid #000; padding: 6px; margin-bottom: 5px; font-size: 11px; background: #fff;}
     .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 18px; text-align: center; margin: 0 4px; display: inline-block; }
     
-    /* Carta de Trabalho UI */
+    /* Elementos Visuais da Carta de Trabalho */
     .layout-linha { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 8px; }
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 800px; margin: 0 auto;}
     
-    .caixa-posto { border: 2px solid #333; padding: 8px; text-align: center; background-color: #fff; position: relative; min-width: 110px; flex: 1;}
+    .caixa-posto { border: 2px solid #333; padding: 8px; text-align: center; background-color: #fff; position: relative; min-width: 110px; flex: 1; transition: background 0.2s;}
     .flow-rack { width: 100%; height: 14px; background: #bbb; border: 1px solid #555; margin-bottom: 8px; font-size: 9px; line-height: 14px; color: #000;}
     .andon { position: absolute; top: -10px; left: -10px; width: 18px; height: 18px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red;}
     .wip-badge { position: absolute; top: 40%; right: -12px; width: 22px; height: 22px; background-color: #666; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10; border: 2px solid #fff;}
@@ -127,7 +127,9 @@ st.title("📋 CronoNHS 2.0 - Engenharia de Processos")
 
 tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashboard A3 (Ctrl+P para PDF)"])
 
-# --- ABA 1: INSERÇÃO DE DADOS ---
+# =====================================================================
+# --- ABA 1: INSERÇÃO E CONFIGURAÇÃO DE DADOS ---
+# =====================================================================
 with tab_cad:
     col_info1, col_info2 = st.columns(2)
     elaborador = col_info1.text_input("Elaborado por:", value=st.session_state.get('elaborador', "Engenharia"))
@@ -152,7 +154,7 @@ with tab_cad:
     
     with sub_tab_ativ:
         st.markdown("**Passo a Passo das Atividades:**")
-        st.info("💡 **Dica:** Para excluir uma linha, clique na pequena caixa vazia na ponta esquerda da linha e aperte a tecla 'Delete' ou 'Backspace' do seu teclado.")
+        st.info("💡 **Dica:** Para excluir uma linha, clique na pequena caixa vazia na ponta esquerda da linha e carregue na tecla 'Delete' ou 'Backspace' do seu teclado.")
         df_prod = df_tp[df_tp["Produto"] == prod].copy()
         if df_prod.empty: df_prod = pd.DataFrame(columns=["Posto", "Atividade", "Tempo (s)", "Classificação"])
         
@@ -188,11 +190,13 @@ with tab_cad:
         
         edited_cfg["Produto"] = prod
         pd.concat([df_cfg[df_cfg["Produto"] != prod], edited_cfg], ignore_index=True).to_csv(FILE_POSTOS, index=False)
-        st.success("Tudo salvo com sucesso!")
+        st.success("Guardado com sucesso!")
         st.rerun()
 
 
-# --- ABA 2: DASHBOARD COMPLETO (ESTRUTURA QUADRANTE A3 EXEMPLAR) ---
+# =====================================================================
+# --- ABA 2: DASHBOARD COMPLETO (QUADRANTE A3 EXEMPLAR) ---
+# =====================================================================
 with tab_dash:
     if not df_tp.empty:
         p_sel = st.selectbox("Visualizar Célula:", df_tp['Produto'].unique())
@@ -208,7 +212,7 @@ with tab_dash:
         else:
             tc_total, tc_max = 0, 0
             
-        # 1. CABEÇALHO SUPERIOR (UNIFICADO)
+        # 1. CABEÇALHO SUPERIOR UNIFICADO DO A3
         st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
@@ -216,7 +220,7 @@ with tab_dash:
         with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
         st.write("")
         
-        # --- DEFINIÇÃO DOS MAPAS DE CORES ---
+        # Mapeamento de Cores para o GBO e as Pizzas
         color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
 
         # =====================================================================
@@ -224,14 +228,41 @@ with tab_dash:
         # =====================================================================
         col_sup_esq, col_sup_dir = st.columns([1.1, 0.9])
         
-        # --- PARTE DE CIMA / LADO ESQUERDO: CARTA DE TRABALHO ---
+        # --- LADO ESQUERDO SUPERIOR: CARTA DE TRABALHO INTERATIVA (DRAG & DROP) ---
         with col_sup_esq:
             st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO ({st.session_state.get('layout')})</div>", unsafe_allow_html=True)
             
-            # Sub-colunas internas temporárias para colocar Legenda e EPI do lado da Carta de Trabalho
+            # Código Javascript injetado de forma nativa para permitir arrastar e soltar com o mouse
+            st.markdown("""
+                <script>
+                function allowDrop(ev) {
+                    ev.preventDefault();
+                }
+                function drag(ev) {
+                    ev.dataTransfer.setData("text", ev.target.id);
+                }
+                function drop(ev) {
+                    ev.preventDefault();
+                    var data = ev.dataTransfer.getData("text");
+                    var dragElement = document.getElementById(data);
+                    
+                    // Se soltar na caixa do posto, anexa lá dentro
+                    if (ev.target.classList.contains('caixa-posto')) {
+                        ev.target.appendChild(dragElement);
+                    } else {
+                        // Se cair num elemento filho (ex: bolinhas ou operador), encontra a caixa do posto pai
+                        var postoPai = ev.target.closest('.caixa-posto');
+                        if (postoPai) {
+                            postoPai.appendChild(dragElement);
+                        }
+                    }
+                }
+                </script>
+            """, unsafe_allow_html=True)
+            
             c_leg_epi, c_layout_desenho = st.columns([0.3, 0.7])
             with c_leg_epi:
-                st.markdown("<div class='caixa-padrao' style='font-size:10px;'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#666;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> FlowRack</div>", unsafe_allow_html=True)
+                st.markdown("<div class='caixa-padrao' style='font-size:10px;'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#666;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> FlowRack<br><br><span style='color:blue; font-size:9px;'>*Arraste os ícones vermelhos ou cinzentos com o rato para mudar de posto antes de imprimir!</span></div>", unsafe_allow_html=True)
                 epis_html = "".join([f"<span class='epi-text'>{epi.split(' ')[0]}</span>" for epi in st.session_state.get('epis', [])])
                 st.markdown(f"<div class='caixa-padrao' style='text-align:center; font-size:10px;'><b>EPI'S:</b><br>{epis_html}</div>", unsafe_allow_html=True)
                 
@@ -253,9 +284,15 @@ with tab_dash:
                     qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
                     bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
                     
-                    html_posto = f"<div class='caixa-posto'>"
-                    if tem_andon: html_posto += "<div class='andon'></div>"
-                    if tem_flow: html_posto += "<div class='flow-rack'>FLOW RACK</div>"
+                    # Definição das dropzones (ondragover e ondrop)
+                    html_posto = f"<div class='caixa-posto' ondragover='allowDrop(event)' ondrop='drop(event)' id='zona-{p_nome.replace(' ', '')}'>"
+                    
+                    # Elementos configurados como arrastáveis (draggable='true')
+                    if tem_andon: 
+                        html_posto += f"<div class='andon' draggable='true' ondragstart='drag(event)' id='andon-{p_nome.replace(' ', '')}' style='cursor:move;' title='Arraste-me para outro posto!'></div>"
+                    if tem_flow: 
+                        html_posto += f"<div class='flow-rack' draggable='true' ondragstart='drag(event)' id='flow-{p_nome.replace(' ', '')}' style='cursor:move;' title='Arraste-me para outro posto!'>FLOW RACK</div>"
+                    
                     html_posto += f"<b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}<div class='operador'>👤</div>"
                     if wip > 0: html_posto += f"<div class='wip-badge'>{wip}</div>"
                     html_posto += "</div>"
@@ -263,7 +300,7 @@ with tab_dash:
                 html_layout += "</div>"
                 st.markdown(html_layout, unsafe_allow_html=True)
 
-        # --- PARTE DE CIMA / LADO DIREITO: GBO + PIZZAS LOGO ABAIXO ---
+        # --- LADO DIREITO SUPERIOR: GBO + PIZZAS SINCRO-ALINHADAS ---
         with col_sup_dir:
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             if not df_f.empty:
@@ -278,7 +315,7 @@ with tab_dash:
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
-                # PIZZAS PEQUENAS CENTRALIZADAS DIRETAMENTE ABAIXO DAS COLUNAS DO GBO
+                # Renderização das mini pizzas perfeitamente sob cada coluna do GBO
                 postos_gbo = sorted(df_f['Posto'].unique())
                 cols_pizza = st.columns(len(postos_gbo))
                 
@@ -292,7 +329,7 @@ with tab_dash:
                         fig_p_pie.update_layout(height=80, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
                         st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
                 
-                # LEGENDA DO AGREGA VALOR INSERIDA LOGO ABAIXO DOS GRÁFICOS DE PIZZA
+                # Legenda do GBO/Pizza posicionada estrategicamente no final da secção
                 st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 4px;'> "
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
                             "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
@@ -303,10 +340,10 @@ with tab_dash:
         # =====================================================================
         # QUADRANTE INFERIOR (PARTE DE BAIXO)
         # =====================================================================
-        st.write(" ") # Pequeno espaçador visual entre quadrantes
+        st.write(" ") # Pequeno espaçador vertical
         col_inf_esq, col_inf_dir = st.columns([1.1, 0.9])
         
-        # --- PARTE DE BAIXO / LADO ESQUERDO: TABELA COMBINADA (YAMAZUMI) ---
+        # --- LADO ESQUERDO INFERIOR: TABELA COMBINADA (YAMAZUMI) ---
         with col_inf_esq:
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
@@ -315,7 +352,7 @@ with tab_dash:
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 
-                # Altura ideal adaptada para caber no quadrante sem empurrar a folha
+                # Altura responsiva calculada para não estourar os limites da folha
                 altura_grafico = max(180, len(df_f) * 22)
                 fig_gantt.update_layout(
                     yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
@@ -327,7 +364,7 @@ with tab_dash:
                 fig_gantt.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
 
-        # --- PARTE DE BAIXO / LADO DIREITO: QUADRO DE CAPACIDADE (COMPLETO) ---
+        # --- LADO DIREITO INFERIOR: QUADRO DE CAPACIDADE (COMPLETO) ---
         with col_inf_dir:
             st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
@@ -342,5 +379,5 @@ with tab_dash:
                 df_cap['Capacidade (saturação) %'] = ((df_cap['TC (saturação)'] / takt) * 100).round(2).astype(str) + "%"
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
-                # Renderiza o Dataframe ocupando a largura total e destravado contra scrolls pelo CSS superior
+                # Exibição da tabela ocupando 100% da largura, com scrolls laterais desativados via CSS de impressão
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
