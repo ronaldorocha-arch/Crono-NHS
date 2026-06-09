@@ -1,12 +1,3 @@
-Com base nas suas imagens, consegui identificar perfeitamente os três problemas e já os resolvi no código abaixo:
-
-1. **Retângulos de tamanhos diferentes:** Isso acontecia porque o Streamlit tentava ajustar o tamanho das caixas ao texto dentro delas. Mudei o CSS para forçar **Tamanhos Fixos (`width: 220px; height: 120px;`)**. Agora, não importa a quantidade de bolinhas ou o texto, **todos os postos terão exata e rigorosamente o mesmo tamanho**.
-2. **Operadores desconfigurados:** O "Ponto de Uso" estava a empurrar os elementos. Agora, fixei o Ponto de Uso sempre no topo da caixa. Os **Operadores (👤) foram colocados de forma absoluta SEMPRE do lado de fora da caixa** (Frente = baixo fora, Trás = cima fora, Esquerda = esquerda fora, Direita = direita fora).
-3. **A Impressão (Colunas Quebradas e Gráficos Empurrados):** Na sua imagem, o Streamlit estava a "empilhar" os cabeçalhos e a quebrar os gráficos. Inseri um comando CSS forçado (`flex-wrap: nowrap !important;`) que **proíbe o navegador de quebrar as colunas na hora de imprimir**. Agora ele vai manter o formato de grelha (grid) lado a lado, tal como você vê na tela do computador.
-
-Aqui está o código completo e corrigido para substituir no seu `app.py`:
-
-```python
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -236,7 +227,7 @@ with tab_dash:
         else:
             tc_total, tc_max = 0, 0
             
-        # 1. CABEÇALHO SUPERIOR UNIFICADO
+        # 1. CABEÇALHO SUPERIOR UNIFICADO DO A3
         st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
@@ -247,7 +238,7 @@ with tab_dash:
         color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
 
         # =====================================================================
-        # QUADRANTE SUPERIOR
+        # QUADRANTE SUPERIOR (PARTE DE CIMA)
         # =====================================================================
         col_sup_esq, col_sup_dir = st.columns([1.1, 0.9])
         
@@ -302,7 +293,6 @@ with tab_dash:
                     
                     html_posto = f"<div class='caixa-posto'>"
                     
-                    # Nome e Bolinhas Centralizados
                     html_posto += f"<div style='margin-top: {'15px' if tem_flow else '0px'};'><b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}</div>"
                     
                     if tem_andon: 
@@ -312,7 +302,6 @@ with tab_dash:
                     if wip > 0: 
                         html_posto += f"<div class='wip-badge'>{wip}</div>"
                         
-                    # Operador Posicionado (Sempre FORA)
                     if pos_op == 'Trás': html_posto += f"<div class='operador-icon op-tras'>👤</div>"
                     elif pos_op == 'Esquerda': html_posto += f"<div class='operador-icon op-esq'>👤</div>"
                     elif pos_op == 'Direita': html_posto += f"<div class='operador-icon op-dir'>👤</div>"
@@ -397,5 +386,3 @@ with tab_dash:
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
-
-```
