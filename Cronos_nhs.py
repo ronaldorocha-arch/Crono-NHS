@@ -1,13 +1,4 @@
-Opa, aconteceu a mesma coisa! O Python deu esse erro porque você acabou copiando o meu texto de aviso junto com a programação. O arquivo `.py` só consegue ler códigos; qualquer texto normal ou emoji (como o ⚠️) faz ele quebrar.
-
-Vamos resolver isso em dois passos:
-
-1. Abra o seu arquivo `Cronos_nhs.py` e **apague absolutamente tudo** que está lá dentro. Deixe a tela em branco.
-2. Copie **apenas o que está dentro da caixa preta abaixo**. Para não ter erro, passe o rato por cima da caixa preta e clique no botão de **"Copiar"** (ou *Copy code*) que vai aparecer no canto superior direito dela.
-
-Cole no seu arquivo em branco e salve.
-
-```python
+``python
 import streamlit as st
 import pandas as pd
 import plotly.express as px
