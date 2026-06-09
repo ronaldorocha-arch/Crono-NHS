@@ -27,7 +27,7 @@ def carregar_cfg_postos():
 
 st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
 
-# --- CSS ESTRUTURAL E IMPRESSÃO (CORRIGIDO PARA O FORMATO A3) ---
+# --- CSS ESTRUTURAL E IMPRESSÃO ---
 st.markdown("""
     <style>
     /* ---------------------------------------------------
@@ -57,12 +57,10 @@ st.markdown("""
             overflow: visible !important;
         }
         
-        /* Ajuste de Zoom para caber na folha A3 sem distorcer */
         .block-container {
             zoom: 0.75 !important;
         }
         
-        /* 🚨 HACK VITAL: Impede o Streamlit de empilhar as colunas na impressão 🚨 */
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -89,7 +87,7 @@ st.markdown("""
     }
     
     /* ---------------------------------------------------
-       ESTILOS VISUAIS DO DASHBOARD E POSTOS (PADRONIZADO)
+       ESTILOS VISUAIS DO DASHBOARD E POSTOS
     --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
@@ -99,10 +97,11 @@ st.markdown("""
     .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 18px; text-align: center; margin: 0 4px; display: inline-block; }
     
-    .layout-linha { display: flex; justify-content: space-around; align-items: center; flex-wrap: nowrap; gap: 30px; padding: 30px 10px; }
-    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; max-width: 800px; margin: 0 auto; padding: 30px 10px;}
+    /* 🚨 FORÇA O GAP ZERO E CENTRALIZA A BANCADA 🚨 */
+    .layout-linha { display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; gap: 0px !important; padding: 45px 10px; }
+    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px !important; max-width: 800px; margin: 0 auto; padding: 45px 10px;}
     
-    /* 🚨 CAIXA DO POSTO: TAMANHO 100% FIXO 🚨 */
+    /* 🚨 CAIXA DO POSTO: IMPEDE O STREAMLIT DE SEPARÁ-LOS (flex: none) 🚨 */
     .caixa-posto { 
         width: 200px !important; 
         height: 100px !important; 
@@ -113,21 +112,26 @@ st.markdown("""
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        margin: 15px;
+        margin: 0px !important; 
+        margin-right: -2px !important; /* Sobrepõe as bordas para fundir as mesas */
+        margin-bottom: -2px !important;
+        flex: none !important; /* Bloqueia o alongamento automático do Streamlit */
+        box-sizing: border-box !important;
     }
     
     /* PONTO DE USO TRAVADO NO TOPO */
-    .ponto-uso { position: absolute; top: 0; left: 0; width: 100%; height: 18px; background: #bbb; border-bottom: 1px solid #333; font-size: 10px; line-height: 18px; color: #000; font-weight: bold;}
+    .ponto-uso { position: absolute; top: 0; left: -2px; right: -2px; height: 18px; background: #bbb; border-bottom: 1px solid #333; font-size: 10px; line-height: 18px; color: #000; font-weight: bold; z-index: 5; text-align: center;}
     
     /* INDICADORES */
-    .andon { position: absolute; top: -12px; left: -12px; width: 22px; height: 22px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red;}
-    .wip-badge { position: absolute; bottom: -12px; left: -12px; width: 24px; height: 24px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; z-index: 10; border: 2px solid #fff;}
+    .andon { position: absolute; top: -12px; left: -12px; width: 22px; height: 22px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red; z-index: 10;}
+    /* WIP movido para a direita (right: -12px) */
+    .wip-badge { position: absolute; bottom: -12px; right: -12px; width: 24px; height: 24px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; z-index: 10; border: 2px solid #fff;}
     
-    .bolinha { display: inline-flex; height: 22px; width: 22px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 11px;}
+    .bolinha { display: inline-flex; height: 22px; width: 22px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 11px; z-index: 5;}
     .b-1 { background-color: #00bcd4; } .b-2 { background-color: #4caf50; } .b-3 { background-color: #e040fb; } .b-4 { background-color: #ff9800; } .b-5 { background-color: #9c27b0; }
     
-    /* 🚨 POSIÇÕES DO OPERADOR (SEMPRE FORA DO RETÂNGULO) 🚨 */
-    .operador-icon { position: absolute; font-size: 26px; }
+    /* POSIÇÕES DO OPERADOR */
+    .operador-icon { position: absolute; font-size: 26px; z-index: 10; }
     .op-frente { bottom: -38px; left: calc(50% - 13px); }
     .op-tras { top: -38px; left: calc(50% - 13px); }
     .op-esq { top: calc(50% - 13px); left: -38px; }
@@ -183,206 +187,4 @@ with tab_cad:
         )
         
     with sub_tab_postos:
-        st.markdown("**Mapeamento do Layout da Linha:**")
-        df_cfg_prod = df_cfg[df_cfg["Produto"] == prod].copy()
-        if df_cfg_prod.empty:
-            df_cfg_prod = pd.DataFrame({"Posto": lista_postos, "Ponto de Uso": ["Não"]*len(lista_postos), "Andon": ["Não"]*len(lista_postos), "WIP": [0]*len(lista_postos), "Posição Operador": ["Frente"]*len(lista_postos)})
-        
-        edited_cfg = st.data_editor(
-            df_cfg_prod, hide_index=True, use_container_width=True,
-            column_config={
-                "Posto": st.column_config.TextColumn("Posto", disabled=True),
-                "Ponto de Uso": st.column_config.SelectboxColumn("Possui Ponto de Uso?", options=["Sim", "Não"]),
-                "Andon": st.column_config.SelectboxColumn("Possui Andon?", options=["Sim", "Não"]),
-                "WIP": st.column_config.NumberColumn("Qtd de WIP", min_value=0, step=1),
-                "Posição Operador": st.column_config.SelectboxColumn("Onde fica o Operador?", options=["Frente", "Trás", "Esquerda", "Direita"])
-            }
-        )
-        
-    if st.button("💾 SALVAR PRODUTO E CONFIGURAÇÕES", type="primary", use_container_width=True):
-        edited_df["Produto"] = prod
-        pd.concat([df_tp[df_tp["Produto"] != prod], edited_df], ignore_index=True).to_csv(FILE_TP, index=False)
-        
-        edited_cfg["Produto"] = prod
-        pd.concat([df_cfg[df_cfg["Produto"] != prod], edited_cfg], ignore_index=True).to_csv(FILE_POSTOS, index=False)
-        st.success("Guardado com sucesso!")
-        st.rerun()
-
-
-# =====================================================================
-# --- ABA 2: DASHBOARD COMPLETO (QUADRANTE A3 EXEMPLAR) ---
-# =====================================================================
-with tab_dash:
-    if not df_tp.empty:
-        p_sel = st.selectbox("Visualizar Célula:", df_tp['Produto'].unique())
-        df_f = df_tp[df_tp['Produto'] == p_sel].sort_values(by=["Posto"]).copy()
-        df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
-        
-        takt = st.session_state.get('takt', 261.0)
-        demanda = st.session_state.get('demanda', 116)
-        
-        if not df_f.empty:
-            df_f['Início (s)'] = df_f.groupby('Posto')['Tempo (s)'].cumsum() - df_f['Tempo (s)']
-            tc_total, tc_max = df_f['Tempo (s)'].sum().round(1), df_f.groupby('Posto')['Tempo (s)'].sum().max().round(1)
-        else:
-            tc_total, tc_max = 0, 0
-            
-        # 1. CABEÇALHO SUPERIOR UNIFICADO DO A3
-        st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
-        cc1, cc2, cc3 = st.columns(3)
-        with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
-        with cc2: st.markdown(f"<div class='caixa-cabecalho'>Depto: {st.session_state.get('depto')}</div>", unsafe_allow_html=True)
-        with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
-        st.write("")
-        
-        color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
-
-        # =====================================================================
-        # QUADRANTE SUPERIOR (PARTE DE CIMA)
-        # =====================================================================
-        col_sup_esq, col_sup_dir = st.columns([1.1, 0.9])
-        
-        with col_sup_esq:
-            st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO ({st.session_state.get('layout')})</div>", unsafe_allow_html=True)
-            
-            postos_disp = list(df_f['Posto'].unique())
-            
-            st.markdown("<div class='no-print' style='background:#f4f4f4; padding:10px; border-radius:5px; border:1px solid #ccc; margin-bottom:15px;'><b>⚙️ Ajuste Rápido do Layout</b></div>", unsafe_allow_html=True)
-            
-            andons_atuais = [p for p in postos_disp if not df_c[df_c['Posto']==p].empty and df_c[df_c['Posto']==p]['Andon'].values[0] == 'Sim']
-            flows_atuais = [p for p in postos_disp if not df_c[df_c['Posto']==p].empty and df_c[df_c['Posto']==p]['Ponto de Uso'].values[0] == 'Sim']
-            
-            c_q1, c_q2 = st.columns(2)
-            novos_andons = c_q1.multiselect("📍 Postos com Andon:", postos_disp, default=andons_atuais, key="m_andon")
-            novos_flows = c_q2.multiselect("📦 Postos com Ponto de Uso:", postos_disp, default=flows_atuais, key="m_flow")
-            
-            if set(novos_andons) != set(andons_atuais) or set(novos_flows) != set(flows_atuais):
-                for p in postos_disp:
-                    idx = df_cfg[(df_cfg['Produto'] == p_sel) & (df_cfg['Posto'] == p)].index
-                    if not idx.empty:
-                        df_cfg.loc[idx, 'Andon'] = 'Sim' if p in novos_andons else 'Não'
-                        df_cfg.loc[idx, 'Ponto de Uso'] = 'Sim' if p in novos_flows else 'Não'
-                df_cfg.to_csv(FILE_POSTOS, index=False)
-                df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
-
-            c_leg_epi, c_layout_desenho = st.columns([0.3, 0.7])
-            with c_leg_epi:
-                st.markdown("<div class='caixa-padrao' style='font-size:10px;'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#000;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> Ponto de Uso</div>", unsafe_allow_html=True)
-                epis_html = "".join([f"<span class='epi-text'>{epi.split(' ')[0]}</span>" for epi in st.session_state.get('epis', [])])
-                st.markdown(f"<div class='caixa-padrao' style='text-align:center; font-size:10px;'><b>EPI'S:</b><br>{epis_html}</div>", unsafe_allow_html=True)
-                
-            with c_layout_desenho:
-                postos = df_f['Posto'].unique()
-                html_layout = f"<div class='{'layout-u' if st.session_state.get('layout') == 'Célula em U' else 'layout-linha'}'>"
-                postos_display = list(postos)
-                
-                if st.session_state.get('layout') == 'Célula em U' and len(postos_display) > 2:
-                    metade = (len(postos_display) + 1) // 2
-                    postos_display = postos_display[:metade] + list(reversed(postos_display[metade:]))
-                
-                for i, p_nome in enumerate(postos_display):
-                    cfg_p = df_c[df_c['Posto'] == p_nome]
-                    tem_flow = "Sim" in cfg_p['Ponto de Uso'].values
-                    tem_andon = "Sim" in cfg_p['Andon'].values
-                    wip = int(cfg_p['WIP'].values[0]) if not cfg_p.empty else 0
-                    pos_op = cfg_p['Posição Operador'].values[0] if 'Posição Operador' in cfg_p.columns and not cfg_p.empty else 'Frente'
-                    
-                    idx_cor = (list(postos).index(p_nome) % 5) + 1
-                    qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
-                    bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
-                    
-                    html_posto = f"<div class='caixa-posto'>"
-                    
-                    html_posto += f"<div style='margin-top: {'15px' if tem_flow else '0px'};'><b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}</div>"
-                    
-                    if tem_andon: 
-                        html_posto += f"<div class='andon'></div>"
-                    if tem_flow: 
-                        html_posto += f"<div class='ponto-uso'>PONTO DE USO</div>"
-                    if wip > 0: 
-                        html_posto += f"<div class='wip-badge'>{wip}</div>"
-                        
-                    if pos_op == 'Trás': html_posto += f"<div class='operador-icon op-tras'>👤</div>"
-                    elif pos_op == 'Esquerda': html_posto += f"<div class='operador-icon op-esq'>👤</div>"
-                    elif pos_op == 'Direita': html_posto += f"<div class='operador-icon op-dir'>👤</div>"
-                    else: html_posto += f"<div class='operador-icon op-frente'>👤</div>"
-                    
-                    html_posto += "</div>"
-                    html_layout += html_posto
-                html_layout += "</div>"
-                st.markdown(html_layout, unsafe_allow_html=True)
-
-        with col_sup_dir:
-            st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
-            if not df_f.empty:
-                fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
-                fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
-                
-                totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
-                for posto, total in totais_gbo.items():
-                    fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=10)
-
-                fig_gbo.update_layout(height=180, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
-                fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
-                st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
-                
-                postos_gbo = sorted(df_f['Posto'].unique())
-                cols_pizza = st.columns(len(postos_gbo))
-                
-                for idx, p_nome in enumerate(postos_gbo):
-                    with cols_pizza[idx]:
-                        st.markdown(f"<div style='text-align:center; font-size:10px; font-weight:bold; color:#555;'>{p_nome}</div>", unsafe_allow_html=True)
-                        df_p_pizza = df_f[df_f['Posto'] == p_nome].groupby('Classificação')['Tempo (s)'].sum().reset_index()
-                        
-                        fig_p_pie = px.pie(df_p_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
-                        fig_p_pie.update_traces(textposition='inside', textinfo='percent')
-                        fig_p_pie.update_layout(height=80, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
-                        st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
-                
-                st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 4px;'> "
-                            "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
-                            "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
-                            "<span class='icon-legenda' style='background:#ff9900; margin-left:10px;'></span> Não Agrega"
-                            "</div>", unsafe_allow_html=True)
-
-
-        # =====================================================================
-        # QUADRANTE INFERIOR
-        # =====================================================================
-        st.write(" ")
-        col_inf_esq, col_inf_dir = st.columns([1.1, 0.9])
-        
-        with col_inf_esq:
-            st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
-            if not df_f.empty:
-                fig_gantt = px.bar(df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto", 
-                                   orientation='h', text="Tempo (s)",
-                                   color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
-                fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
-                
-                altura_grafico = max(180, len(df_f) * 22)
-                fig_gantt.update_layout(
-                    yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
-                    xaxis={'title': 'Tempo (s)'},
-                    showlegend=False, 
-                    height=altura_grafico, 
-                    margin=dict(l=10, r=10, t=5, b=15)
-                )
-                fig_gantt.update_traces(textposition='inside', insidetextanchor='middle')
-                st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
-
-        with col_inf_dir:
-            st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
-            if not df_f.empty:
-                df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
-                df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC'}, inplace=True)
-                
-                df_cap['TC (saturação)'] = (df_cap['TC'] * 1.10).round(0).astype(int)
-                df_cap['TAKT'] = int(takt)
-                
-                df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC (saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
-                df_cap['OP.'] = 1  
-                df_cap['Capacidade (saturação) %'] = ((df_cap['TC (saturação)'] / takt) * 100).round(2).astype(str) + "%"
-                df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
-                
-                st.dataframe(df_cap, use_container_width=True, hide_index=True)
+        st.markdown
