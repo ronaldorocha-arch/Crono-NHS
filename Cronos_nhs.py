@@ -26,7 +26,7 @@ st.markdown("""
        HACK PARA IMPRESSÃO A3 PERFEITA (SEM CORTES)
     --------------------------------------------------- */
     @media print {
-        @page { size: A3 landscape; margin: 10mm; }
+        @page { size: A3 landscape; margin: 8mm; }
         
         /* Esconde menus do Streamlit e o Título Principal (h1) */
         header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1 { 
@@ -55,11 +55,17 @@ st.markdown("""
             margin: 0 !important; 
         }
         
-        /* Aplica um leve zoom out para garantir que o lado direito não corte */
-        body { zoom: 0.85; }
+        /* Zoom ideal para ajustar todos os elementos e gráficos na folha A3 */
+        body { zoom: 0.82; }
         
-        /* Impede que as colunas quebrem de forma errada */
+        /* Impede que as colunas e tabelas quebrem de forma errada */
         [data-testid="column"] { min-width: 0 !important; }
+        
+        /* Garante que o dataframe de capacidade não adicione barras de rolagem na impressão */
+        .stDataFrame, [data-testid="stDataFrame"] {
+            width: 100% !important;
+            overflow: visible !important;
+        }
     }
     
     /* ---------------------------------------------------
@@ -253,7 +259,7 @@ with tab_dash:
                 fig_gantt.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
 
-        # --- DIREITA: GBO E CAPACIDADE ---
+        # --- DIREITA: GBO, PIZZAS POR POSTO E CAPACIDADE ---
         with col_dir:
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
@@ -262,7 +268,7 @@ with tab_dash:
                 fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
                 
-                # --- Adicionando o Total no topo de cada coluna ---
+                # Soma total no topo de cada coluna do GBO
                 totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
                 for posto, total in totais_gbo.items():
                     fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=12)
@@ -272,33 +278,45 @@ with tab_dash:
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
                 # Legenda customizada para GBO
-                st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 10px;'>"
+                st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 5px; margin-bottom: 15px;'>"
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
                             "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
                             "<span class='icon-legenda' style='background:#ff9900; margin-left:10px;'></span> Não Agrega"
                             "</div>", unsafe_allow_html=True)
             
-            # --- NOVO: GRÁFICO DE PIZZA (PROPORÇÃO DE VALOR) ---
-            st.markdown("<div class='titulo-secao' style='margin-top: 20px;'>PROPORÇÃO DE VALOR</div>", unsafe_allow_html=True)
+            # --- NOVO: UM GRÁFICO DE PIZZA PEQUENO PARA CADA POSTO (LADO A LADO) ---
+            st.markdown("<div class='titulo-secao'>PROPORÇÃO DE VALOR POR POSTO</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                df_pizza = df_f.groupby('Classificação')['Tempo (s)'].sum().reset_index()
-                fig_pie = px.pie(df_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
-                fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-                fig_pie.update_layout(height=200, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
-                st.plotly_chart(fig_pie, use_container_width=True, key="pie_chart")
+                postos_gbo = sorted(df_f['Posto'].unique())
+                cols_pizza = st.columns(len(postos_gbo)) # Cria colunas dinâmicas dependendo do número de postos
+                
+                for idx, p_nome in enumerate(postos_gbo):
+                    with cols_pizza[idx]:
+                        st.markdown(f"<div style='text-align:center; font-size:11px; font-weight:bold;'>{p_nome}</div>", unsafe_allow_html=True)
+                        df_p_pizza = df_f[df_f['Posto'] == p_nome].groupby('Classificação')['Tempo (s)'].sum().reset_index()
+                        
+                        fig_p_pie = px.pie(df_p_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
+                        fig_p_pie.update_traces(textposition='inside', textinfo='percent') # Mostra apenas a porcentagem lá dentro para não poluir
+                        fig_p_pie.update_layout(
+                            height=110, # Tamanho menor e padronizado
+                            margin=dict(l=5, r=5, t=5, b=5), 
+                            showlegend=False
+                        )
+                        st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
 
             st.markdown("<div class='titulo-secao' style='margin-top: 20px;'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
-                # Renomeando as colunas conforme solicitado
+                # Colunas renomeadas para TC e OP. conforme solicitado
                 df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC'}, inplace=True)
                 
                 df_cap['TC (saturação)'] = (df_cap['TC'] * 1.10).round(0).astype(int)
                 df_cap['TAKT'] = int(takt)
                 
                 df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC (saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
-                df_cap['OP.'] = 1  # De "OPERADOR RES" para "OP."
+                df_cap['OP.'] = 1  
                 df_cap['Capacidade (saturação) %'] = ((df_cap['TC (saturação)'] / takt) * 100).round(2).astype(str) + "%"
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
+                
