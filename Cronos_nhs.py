@@ -17,7 +17,6 @@ def carregar_cfg_postos():
         return pd.DataFrame(columns=["Produto", "Posto", "Ponto de Uso", "Andon", "WIP", "Posição Operador"])
     
     df = pd.read_csv(FILE_POSTOS)
-    # Garante compatibilidade com versões anteriores
     if "Flow Rack" in df.columns:
         df.rename(columns={"Flow Rack": "Ponto de Uso"}, inplace=True)
     if "WIP (Estoque)" in df.columns:
@@ -28,12 +27,9 @@ def carregar_cfg_postos():
 
 st.set_page_config(page_title="CronoNHS 2.0 - A3/A4", layout="wide")
 
-# --- CSS ESTRUTURAL (A IMPRESSÃO AGORA É DINÂMICA NA ABA 2) ---
+# --- CSS ESTRUTURAL E IMPRESSÃO ---
 st.markdown("""
     <style>
-    /* ---------------------------------------------------
-       IMPRESSÃO - REGRAS GERAIS PARA QUALQUER FOLHA
-    --------------------------------------------------- */
     @media print {
         header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"], [data-testid="stRadio"] { 
             display: none !important; 
@@ -68,7 +64,6 @@ st.markdown("""
             page-break-inside: avoid !important;
         }
         
-        /* Libera as tabelas para não criarem barra de rolagem ao imprimir */
         .stDataFrame, [data-testid="stDataFrame"], [data-testid="stGridVirtualizer"] {
             width: 100% !important;
             overflow: visible !important;
@@ -79,9 +74,6 @@ st.markdown("""
         }
     }
     
-    /* ---------------------------------------------------
-       ESTILOS VISUAIS DO DASHBOARD E POSTOS
-    --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
     .caixa-cabecalho { border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold; font-size: 14px; background-color: #f4f4f4;}
     .titulo-secao { text-align: center; font-weight: bold; font-size: 15px; margin: 10px 0 10px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
@@ -90,16 +82,14 @@ st.markdown("""
     .icon-legenda { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 20px; text-align: center; margin: 0 4px; display: inline-block; }
     
-    /* TABELA DE CAPACIDADE CUSTOMIZADA (Evita cortes e centraliza tudo) */
+    /* TABELA DE CAPACIDADE CUSTOMIZADA */
     .tabela-cap { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 5px; }
-    .tabela-cap th { background-color: #f4f4f4; border: 1px solid #999; padding: 6px; text-align: center !important; font-weight: bold; color: #000;}
-    .tabela-cap td { border: 1px solid #999; padding: 6px; text-align: center !important; color: #333;}
+    .tabela-cap th { background-color: #f4f4f4; border: 1px solid #999; padding: 6px; text-align: center !important; vertical-align: middle !important; font-weight: bold; color: #000; line-height: 1.2;}
+    .tabela-cap td { border: 1px solid #999; padding: 6px; text-align: center !important; vertical-align: middle !important; color: #333;}
     
-    /* FORÇA O GAP ZERO E CENTRALIZA A BANCADA */
     .layout-linha { display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; gap: 0px !important; padding: 60px 10px; }
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px !important; max-width: 800px; margin: 0 auto; padding: 60px 10px;}
     
-    /* CAIXA DO POSTO */
     .caixa-posto { 
         width: 220px !important; 
         height: 120px !important; 
@@ -211,7 +201,6 @@ with tab_cad:
 # =====================================================================
 with tab_dash:
     if not df_tp.empty:
-        # --- 🚨 SELEÇÃO DO TAMANHO DA FOLHA PARA IMPRESSÃO 🚨 ---
         st.markdown("<div class='no-print' style='background:#eef7ff; padding:10px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'>", unsafe_allow_html=True)
         col_print1, col_print2 = st.columns([1, 2])
         tam_folha = col_print1.radio("🖨️ Tamanho da Impressão (Ctrl+P):", ["A3", "A4"], horizontal=True)
@@ -254,7 +243,7 @@ with tab_dash:
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
         with cc2: st.markdown(f"<div class='caixa-cabecalho'>Depto: {st.session_state.get('depto')}</div>", unsafe_allow_html=True)
-        with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
+        with cc3: st.markdown(f"<div class='caixa-cabecalho'>Tc Total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
         st.write("")
         
         color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
@@ -396,18 +385,18 @@ with tab_dash:
             st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
-                df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC'}, inplace=True)
+                df_cap.rename(columns={'Posto': 'Operação', 'Tempo (s)': 'Tc'}, inplace=True)
                 
-                # Nomes encurtados para caber perfeitamente sem cortes
-                df_cap['TC Sat.'] = (df_cap['TC'] * 1.10).round(0).astype(int)
-                df_cap['TAKT'] = int(takt)
-                df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC Sat.']).apply(lambda x: round(x, 1) if x > 0 else 0)
-                df_cap['OP.'] = 1  
-                df_cap['Cap. Sat. (%)'] = ((df_cap['TC Sat.'] / takt) * 100).round(2).astype(str) + "%"
-                df_cap['Demanda'] = int(demanda)
+                # Nomes em minúsculo (apenas primeira letra maiúscula) com quebra de linha <br> para poupar espaço horizontal
+                df_cap['Tc<br>(saturação)'] = (df_cap['Tc'] * 1.10).round(0).astype(int)
+                df_cap['Takt'] = int(takt)
+                df_cap['Cap.<br>diária'] = (28800 / df_cap['Tc<br>(saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
+                df_cap['Op.'] = 1  
+                df_cap['Capacidade<br>(saturação) %'] = ((df_cap['Tc<br>(saturação)'] / takt) * 100).round(2).astype(str) + "%"
+                df_cap['Demanda<br>(pçs/dia)'] = int(demanda)
                 
-                # Reordenar colunas
-                colunas_mostrar = ['OPERAÇÃO', 'TC', 'TC Sat.', 'TAKT', 'CAP. DIÁRIA', 'OP.', 'Cap. Sat. (%)', 'Demanda']
+                # Reordenar colunas com os novos nomes
+                colunas_mostrar = ['Operação', 'Tc', 'Tc<br>(saturação)', 'Takt', 'Cap.<br>diária', 'Op.', 'Capacidade<br>(saturação) %', 'Demanda<br>(pçs/dia)']
                 df_cap_display = df_cap[colunas_mostrar]
                 
                 # Gera uma Tabela HTML estática (nunca é cortada na impressão e permite CSS livre)
