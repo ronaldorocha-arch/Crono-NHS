@@ -14,35 +14,43 @@ def carregar_tp():
 
 def carregar_cfg_postos():
     if not os.path.exists(FILE_POSTOS):
-        return pd.DataFrame(columns=["Produto", "Posto", "Flow Rack", "Andon", "WIP (Estoque)"])
-    return pd.read_csv(FILE_POSTOS)
+        return pd.DataFrame(columns=["Produto", "Posto", "Ponto de Uso", "Andon", "WIP", "Posição Operador"])
+    
+    df = pd.read_csv(FILE_POSTOS)
+    
+    # Atualiza arquivos antigos automaticamente para não quebrar seu sistema
+    if "Flow Rack" in df.columns:
+        df.rename(columns={"Flow Rack": "Ponto de Uso"}, inplace=True)
+    if "WIP (Estoque)" in df.columns:
+        df.rename(columns={"WIP (Estoque)": "WIP"}, inplace=True)
+    if "Posição Operador" not in df.columns:
+        df["Posição Operador"] = "Frente"
+        
+    return df
 
 st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
 
-# --- HACK ULTRA ESTRITO DE CSS PARA IMPRESSÃO EM 1 PÁGINA A3 ---
+# --- CSS ESTRUTURAL E IMPRESSÃO ---
 st.markdown("""
     <style>
     /* ---------------------------------------------------
-       FORÇAR TODO O CONTEÚDO EM APENAS 1 PÁGINA A3
+       IMPRESSÃO A3 - CORRIGIDA E MAIS LIMPA
     --------------------------------------------------- */
     @media print {
         @page { 
             size: A3 landscape; 
-            margin: 0mm !important; 
+            margin: 5mm !important; 
         }
         
-        /* Esconde menus do Streamlit, Abas, Título Principal E OS CONTROLES RÁPIDOS */
         header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"] { 
             display: none !important; 
         }
         
-        /* Força as cores dos gráficos a aparecerem no papel */
         * { 
             -webkit-print-color-adjust: exact !important; 
             color-adjust: exact !important; 
         }
         
-        /* Destrava larguras, elimina paddings e remove barras de rolagem */
         html, body, .stApp, .block-container { 
             width: 100% !important; 
             max-width: 100% !important; 
@@ -52,32 +60,16 @@ st.markdown("""
             overflow: visible !important;
         }
         
-        /* Margem física sutil nas bordas da folha impressa */
-        .block-container {
-            padding: 5mm 8mm 0mm 8mm !important;
-        }
+        /* Zoom suave funciona melhor no Chrome para ajustar à folha sem quebrar layout */
+        body { zoom: 0.82 !important; }
         
-        /* Comprime os espaços vazios entre os blocos nativos do Streamlit */
-        [data-testid="stVerticalBlock"] {
-            gap: 2px !important;
-        }
+        [data-testid="stVerticalBlock"] { gap: 2px !important; }
         
-        /* ESCALA GLOBAL: Reduz proporcionalmente todo o painel para travar estritamente em 1 página */
-        .stMain {
-            transform: scale(0.68) !important;
-            transform-origin: top left !important;
-            width: 147% !important; /* Compensa a perda de largura gerada pelo scale(0.68) */
-            height: auto !important;
-            page-break-inside: avoid !important;
-        }
-        
-        /* Impede que as colunas quebrem linhas ou criem páginas extra */
         [data-testid="column"] { 
             min-width: 0 !important; 
             page-break-inside: avoid !important;
         }
         
-        /* Garante a exibição por inteiro do Quadro de Capacidade (elimina o scroll) */
         .stDataFrame, [data-testid="stDataFrame"], [data-testid="stGridVirtualizer"] {
             width: 100% !important;
             overflow: visible !important;
@@ -95,28 +87,29 @@ st.markdown("""
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
     .titulo-secao { text-align: center; font-weight: bold; font-size: 14px; margin: 5px 0 8px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
     
-    /* Legendas e Caixas de Informação */
     .caixa-padrao { border: 1px solid #000; padding: 6px; margin-bottom: 5px; font-size: 11px; background: #fff;}
     .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 18px; text-align: center; margin: 0 4px; display: inline-block; }
     
-    /* Elementos Visuais da Carta de Trabalho */
-    .layout-linha { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 8px; }
-    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 800px; margin: 0 auto;}
+    .layout-linha { display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap; gap: 20px; padding: 15px 10px; }
+    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; max-width: 800px; margin: 0 auto; padding: 15px 10px;}
     
-    .caixa-posto { border: 2px solid #333; padding: 8px; text-align: center; background-color: #fff; position: relative; min-width: 110px; flex: 1;}
-    .flow-rack { width: 100%; height: 14px; background: #bbb; border: 1px solid #555; margin-bottom: 8px; font-size: 9px; line-height: 14px; color: #000;}
+    /* CAIXA DO POSTO */
+    .caixa-posto { border: 2px solid #333; padding: 8px; text-align: center; background-color: #fff; position: relative; min-width: 100px; flex: 1;}
+    .ponto-uso { width: 100%; height: 14px; background: #bbb; border: 1px solid #555; margin-bottom: 8px; font-size: 9px; line-height: 14px; color: #000;}
+    
+    /* INDICADORES */
     .andon { position: absolute; top: -10px; left: -10px; width: 18px; height: 18px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red;}
-    .wip-badge { position: absolute; top: 40%; right: -12px; width: 22px; height: 22px; background-color: #666; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10; border: 2px solid #fff;}
+    .wip-badge { position: absolute; bottom: -10px; left: -10px; width: 22px; height: 22px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; z-index: 10; border: 2px solid #fff;}
     
     .bolinha { display: inline-flex; height: 20px; width: 20px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 10px;}
-    .b-1 { background-color: #00bcd4; }
-    .b-2 { background-color: #4caf50; }
-    .b-3 { background-color: #e040fb; }
-    .b-4 { background-color: #ff9800; }
-    .b-5 { background-color: #9c27b0; }
+    .b-1 { background-color: #00bcd4; } .b-2 { background-color: #4caf50; } .b-3 { background-color: #e040fb; } .b-4 { background-color: #ff9800; } .b-5 { background-color: #9c27b0; }
     
-    .operador { font-size: 22px; margin-top: 5px; color: #555;}
+    /* POSIÇÕES DO OPERADOR */
+    .op-frente { font-size: 22px; margin-top: 5px; text-align: center;}
+    .op-tras { font-size: 22px; position: absolute; top: -28px; left: calc(50% - 11px); }
+    .op-esq { font-size: 22px; position: absolute; top: calc(50% - 11px); left: -28px; }
+    .op-dir { font-size: 22px; position: absolute; top: calc(50% - 11px); right: -28px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -148,13 +141,12 @@ with tab_cad:
     st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'demanda': demanda_input, 'epis': epis_selecionados, 'layout': layout_tipo})
 
     st.write("---")
-    sub_tab_ativ, sub_tab_postos = st.tabs(["⏱️ Tempos e Atividades", "🏭 Configuração Física (Flow Rack, Andon, WIP)"])
+    sub_tab_ativ, sub_tab_postos = st.tabs(["⏱️ Tempos e Atividades", "🏭 Configuração Física (Ponto Uso, Andon, WIP, Operador)"])
     
     lista_postos = [f"Posto {i}" for i in range(1, int(qtd_postos) + 1)]
     
     with sub_tab_ativ:
         st.markdown("**Passo a Passo das Atividades:**")
-        st.info("💡 **Dica:** Para excluir uma linha, clique na pequena caixa vazia na ponta esquerda da linha e carregue na tecla 'Delete' ou 'Backspace' do seu teclado.")
         df_prod = df_tp[df_tp["Produto"] == prod].copy()
         if df_prod.empty: df_prod = pd.DataFrame(columns=["Posto", "Atividade", "Tempo (s)", "Classificação"])
         
@@ -172,15 +164,16 @@ with tab_cad:
         st.markdown("**Mapeamento do Layout da Linha:**")
         df_cfg_prod = df_cfg[df_cfg["Produto"] == prod].copy()
         if df_cfg_prod.empty:
-            df_cfg_prod = pd.DataFrame({"Posto": lista_postos, "Flow Rack": ["Não"]*len(lista_postos), "Andon": ["Não"]*len(lista_postos), "WIP (Estoque)": [0]*len(lista_postos)})
+            df_cfg_prod = pd.DataFrame({"Posto": lista_postos, "Ponto de Uso": ["Não"]*len(lista_postos), "Andon": ["Não"]*len(lista_postos), "WIP": [0]*len(lista_postos), "Posição Operador": ["Frente"]*len(lista_postos)})
         
         edited_cfg = st.data_editor(
             df_cfg_prod, hide_index=True, use_container_width=True,
             column_config={
                 "Posto": st.column_config.TextColumn("Posto", disabled=True),
-                "Flow Rack": st.column_config.SelectboxColumn("Possui Flow Rack?", options=["Sim", "Não"]),
+                "Ponto de Uso": st.column_config.SelectboxColumn("Possui Ponto de Uso?", options=["Sim", "Não"]),
                 "Andon": st.column_config.SelectboxColumn("Possui Andon?", options=["Sim", "Não"]),
-                "WIP (Estoque)": st.column_config.NumberColumn("Estoque APÓS este posto", min_value=0, step=1)
+                "WIP": st.column_config.NumberColumn("Qtd de WIP", min_value=0, step=1),
+                "Posição Operador": st.column_config.SelectboxColumn("Onde fica o Operador?", options=["Frente", "Trás", "Esquerda", "Direita"])
             }
         )
         
@@ -199,7 +192,6 @@ with tab_cad:
 # =====================================================================
 with tab_dash:
     if not df_tp.empty:
-        # Seletor de visualização fica oculto na impressão pelo CSS genérico de selectbox
         p_sel = st.selectbox("Visualizar Célula:", df_tp['Produto'].unique())
         df_f = df_tp[df_tp['Produto'] == p_sel].sort_values(by=["Posto"]).copy()
         df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
@@ -221,7 +213,6 @@ with tab_dash:
         with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
         st.write("")
         
-        # Mapeamento de Cores para o GBO e as Pizzas
         color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
 
         # =====================================================================
@@ -235,32 +226,29 @@ with tab_dash:
             
             postos_disp = list(df_f['Posto'].unique())
             
-            # --- 🛠️ INÍCIO DOS CONTROLES RÁPIDOS ---
+            # --- 🛠️ CONTROLES RÁPIDOS ---
             st.markdown("<div class='no-print' style='background:#f4f4f4; padding:10px; border-radius:5px; border:1px solid #ccc; margin-bottom:15px;'><b>⚙️ Ajuste Rápido do Layout (Desaparece na impressão)</b></div>", unsafe_allow_html=True)
             
-            # Pega as configurações atuais para deixar selecionado
             andons_atuais = [p for p in postos_disp if not df_c[df_c['Posto']==p].empty and df_c[df_c['Posto']==p]['Andon'].values[0] == 'Sim']
-            flows_atuais = [p for p in postos_disp if not df_c[df_c['Posto']==p].empty and df_c[df_c['Posto']==p]['Flow Rack'].values[0] == 'Sim']
+            flows_atuais = [p for p in postos_disp if not df_c[df_c['Posto']==p].empty and df_c[df_c['Posto']==p]['Ponto de Uso'].values[0] == 'Sim']
             
             c_q1, c_q2 = st.columns(2)
             novos_andons = c_q1.multiselect("📍 Postos com Andon:", postos_disp, default=andons_atuais, key="m_andon")
-            novos_flows = c_q2.multiselect("📦 Postos com Flow Rack:", postos_disp, default=flows_atuais, key="m_flow")
+            novos_flows = c_q2.multiselect("📦 Postos com Ponto de Uso:", postos_disp, default=flows_atuais, key="m_flow")
             
-            # Atualiza os dados imediatamente se o utilizador modificar os controlos na tela
             if set(novos_andons) != set(andons_atuais) or set(novos_flows) != set(flows_atuais):
                 for p in postos_disp:
                     idx = df_cfg[(df_cfg['Produto'] == p_sel) & (df_cfg['Posto'] == p)].index
                     if not idx.empty:
                         df_cfg.loc[idx, 'Andon'] = 'Sim' if p in novos_andons else 'Não'
-                        df_cfg.loc[idx, 'Flow Rack'] = 'Sim' if p in novos_flows else 'Não'
-                # Salva no arquivo CSV para não perder e recarrega na memória
+                        df_cfg.loc[idx, 'Ponto de Uso'] = 'Sim' if p in novos_flows else 'Não'
                 df_cfg.to_csv(FILE_POSTOS, index=False)
                 df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
-            # --- 🛠️ FIM DOS CONTROLES RÁPIDOS ---
+            # --- FIM CONTROLES RÁPIDOS ---
 
             c_leg_epi, c_layout_desenho = st.columns([0.3, 0.7])
             with c_leg_epi:
-                st.markdown("<div class='caixa-padrao' style='font-size:10px;'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#666;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> FlowRack</div>", unsafe_allow_html=True)
+                st.markdown("<div class='caixa-padrao' style='font-size:10px;'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#000;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> Ponto de Uso</div>", unsafe_allow_html=True)
                 epis_html = "".join([f"<span class='epi-text'>{epi.split(' ')[0]}</span>" for epi in st.session_state.get('epis', [])])
                 st.markdown(f"<div class='caixa-padrao' style='text-align:center; font-size:10px;'><b>EPI'S:</b><br>{epis_html}</div>", unsafe_allow_html=True)
                 
@@ -275,9 +263,10 @@ with tab_dash:
                 
                 for i, p_nome in enumerate(postos_display):
                     cfg_p = df_c[df_c['Posto'] == p_nome]
-                    tem_flow = "Sim" in cfg_p['Flow Rack'].values
+                    tem_flow = "Sim" in cfg_p['Ponto de Uso'].values
                     tem_andon = "Sim" in cfg_p['Andon'].values
-                    wip = int(cfg_p['WIP (Estoque)'].values[0]) if not cfg_p.empty else 0
+                    wip = int(cfg_p['WIP'].values[0]) if not cfg_p.empty else 0
+                    pos_op = cfg_p['Posição Operador'].values[0] if 'Posição Operador' in cfg_p.columns and not cfg_p.empty else 'Frente'
                     
                     idx_cor = (list(postos).index(p_nome) % 5) + 1
                     qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
@@ -287,9 +276,17 @@ with tab_dash:
                     if tem_andon: 
                         html_posto += f"<div class='andon'></div>"
                     if tem_flow: 
-                        html_posto += f"<div class='flow-rack'>FLOW RACK</div>"
+                        html_posto += f"<div class='ponto-uso'>PONTO DE USO</div>"
                     
-                    html_posto += f"<b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}<div class='operador'>👤</div>"
+                    # Coloca o operador na posição configurada
+                    if pos_op == 'Trás': html_op = f"<div class='op-tras'>👤</div>"
+                    elif pos_op == 'Esquerda': html_op = f"<div class='op-esq'>👤</div>"
+                    elif pos_op == 'Direita': html_op = f"<div class='op-dir'>👤</div>"
+                    else: html_op = f"<div class='op-frente'>👤</div>"
+                    
+                    html_posto += f"<b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}{html_op}"
+                    
+                    # WIP customizado no canto inferior esquerdo
                     if wip > 0: html_posto += f"<div class='wip-badge'>{wip}</div>"
                     html_posto += "</div>"
                     html_layout += html_posto
