@@ -17,6 +17,7 @@ def carregar_cfg_postos():
         return pd.DataFrame(columns=["Produto", "Posto", "Ponto de Uso", "Andon", "WIP", "Posição Operador"])
     
     df = pd.read_csv(FILE_POSTOS)
+    # Garante compatibilidade com versões anteriores
     if "Flow Rack" in df.columns:
         df.rename(columns={"Flow Rack": "Ponto de Uso"}, inplace=True)
     if "WIP (Estoque)" in df.columns:
@@ -25,21 +26,17 @@ def carregar_cfg_postos():
         df["Posição Operador"] = "Frente"
     return df
 
-st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
+st.set_page_config(page_title="CronoNHS 2.0 - A3/A4", layout="wide")
 
-# --- CSS ESTRUTURAL E IMPRESSÃO (MAXIMIZADO PARA FOLHA A3 INTEIRA) ---
+# --- CSS ESTRUTURAL (A IMPRESSÃO AGORA É DINÂMICA NA ABA 2) ---
 st.markdown("""
     <style>
     /* ---------------------------------------------------
-       IMPRESSÃO A3 - PREENCHIMENTO TOTAL DA FOLHA
+       IMPRESSÃO - REGRAS GERAIS PARA QUALQUER FOLHA
     --------------------------------------------------- */
     @media print {
-        @page { 
-            size: A3 landscape; 
-            margin: 0 !important; /* Remove as margens de segurança do navegador */
-        }
-        
-        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"] { 
+        /* Esconde elementos indesejados na impressão (incluindo os seletores novos) */
+        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"], [data-testid="stRadio"] { 
             display: none !important; 
         }
         
@@ -57,18 +54,13 @@ st.markdown("""
             overflow: visible !important;
         }
         
-        .block-container {
-            /* 🚨 AJUSTE O ZOOM AQUI SE PRECISAR DE MAIS OU MENOS ESPAÇO NA IMPRESSORA 🚨 */
-            zoom: 0.93 !important; 
-            padding: 10mm 15mm 10mm 15mm !important; /* Cria uma margem interna segura para não cortar o texto nas bordas físicas */
-        }
-        
+        /* Força colunas lado a lado na impressão */
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
-            gap: 20px !important; /* Espaçamento ligeiramente maior entre colunas */
+            gap: 20px !important;
         }
         
         [data-testid="column"] { 
@@ -78,6 +70,7 @@ st.markdown("""
             page-break-inside: avoid !important;
         }
         
+        /* Libera a tabela de capacidade */
         .stDataFrame, [data-testid="stDataFrame"], [data-testid="stGridVirtualizer"] {
             width: 100% !important;
             overflow: visible !important;
@@ -99,13 +92,14 @@ st.markdown("""
     .icon-legenda { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 20px; text-align: center; margin: 0 4px; display: inline-block; }
     
-    /* ESPAÇAMENTO AUMENTADO PARA PREENCHER MAIS A TELA VERTICALMENTE */
+    /* FORÇA O GAP ZERO E CENTRALIZA A BANCADA */
     .layout-linha { display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; gap: 0px !important; padding: 60px 10px; }
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px !important; max-width: 800px; margin: 0 auto; padding: 60px 10px;}
     
+    /* CAIXA DO POSTO: IMPEDE O STREAMLIT DE SEPARÁ-LOS */
     .caixa-posto { 
-        width: 220px !important; /* Ligeiramente mais largo */
-        height: 120px !important; /* Ligeiramente mais alto */
+        width: 220px !important; 
+        height: 120px !important; 
         border: 2px solid #333; 
         background-color: #fff; 
         position: relative; 
@@ -114,20 +108,24 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         margin: 0px !important; 
-        margin-right: -2px !important; 
+        margin-right: -2px !important; /* Sobrepõe as bordas para fundir as mesas */
         margin-bottom: -2px !important;
         flex: none !important; 
         box-sizing: border-box !important;
     }
     
+    /* PONTO DE USO TRAVADO NO TOPO */
     .ponto-uso { position: absolute; top: 0; left: -2px; right: -2px; height: 18px; background: #bbb; border-bottom: 1px solid #333; font-size: 11px; line-height: 18px; color: #000; font-weight: bold; z-index: 5; text-align: center;}
     
+    /* INDICADORES */
     .andon { position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red; z-index: 10;}
+    /* WIP movido para a direita */
     .wip-badge { position: absolute; bottom: -12px; right: -12px; width: 26px; height: 26px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; z-index: 10; border: 2px solid #fff;}
     
     .bolinha { display: inline-flex; height: 24px; width: 24px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 3px; font-size: 12px; z-index: 5;}
     .b-1 { background-color: #00bcd4; } .b-2 { background-color: #4caf50; } .b-3 { background-color: #e040fb; } .b-4 { background-color: #ff9800; } .b-5 { background-color: #9c27b0; }
     
+    /* POSIÇÕES DO OPERADOR */
     .operador-icon { position: absolute; font-size: 28px; z-index: 10; }
     .op-frente { bottom: -40px; left: calc(50% - 14px); }
     .op-tras { top: -40px; left: calc(50% - 14px); }
@@ -141,7 +139,7 @@ df_cfg = carregar_cfg_postos()
 
 st.title("📋 CronoNHS 2.0 - Engenharia de Processos")
 
-tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashboard A3 (Ctrl+P para PDF)"])
+tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashboard A3/A4 (Ctrl+P para PDF)"])
 
 # =====================================================================
 # --- ABA 1: INSERÇÃO E CONFIGURAÇÃO DE DADOS ---
@@ -210,10 +208,38 @@ with tab_cad:
         st.rerun()
 
 # =====================================================================
-# --- ABA 2: DASHBOARD COMPLETO (QUADRANTE A3 EXEMPLAR) ---
+# --- ABA 2: DASHBOARD COMPLETO (QUADRANTE A3/A4) ---
 # =====================================================================
 with tab_dash:
     if not df_tp.empty:
+        # --- 🚨 SELEÇÃO DO TAMANHO DA FOLHA PARA IMPRESSÃO 🚨 ---
+        st.markdown("<div class='no-print' style='background:#eef7ff; padding:10px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'>", unsafe_allow_html=True)
+        col_print1, col_print2 = st.columns([1, 2])
+        tam_folha = col_print1.radio("🖨️ Tamanho da Impressão (Ctrl+P):", ["A3", "A4"], horizontal=True)
+        col_print2.markdown("<br><span style='font-size: 12px; color: #555;'>Selecione o tamanho antes de pressionar Ctrl+P. O sistema ajustará o zoom automaticamente para a folha escolhida.</span>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # Injeta o CSS dinâmico com o tamanho da página e o zoom correto para a folha selecionada
+        if tam_folha == "A4":
+            st.markdown("""
+                <style>
+                @media print {
+                    @page { size: A4 landscape; margin: 0 !important; }
+                    .block-container { zoom: 0.65 !important; padding: 10mm 15mm 10mm 15mm !important; }
+                }
+                </style>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+                <style>
+                @media print {
+                    @page { size: A3 landscape; margin: 0 !important; }
+                    .block-container { zoom: 0.93 !important; padding: 10mm 15mm 10mm 15mm !important; }
+                }
+                </style>
+            """, unsafe_allow_html=True)
+
+
         p_sel = st.selectbox("Visualizar Célula:", df_tp['Produto'].unique())
         df_f = df_tp[df_tp['Produto'] == p_sel].sort_values(by=["Posto"]).copy()
         df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
@@ -227,7 +253,7 @@ with tab_dash:
         else:
             tc_total, tc_max = 0, 0
             
-        # 1. CABEÇALHO SUPERIOR UNIFICADO DO A3
+        # CABEÇALHO SUPERIOR UNIFICADO
         st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
@@ -322,7 +348,6 @@ with tab_dash:
                 for posto, total in totais_gbo.items():
                     fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=10)
 
-                # Altura do GBO aumentada de 180 para 250 para preencher melhor a folha
                 fig_gbo.update_layout(height=250, margin=dict(l=0, r=0, t=15, b=0), showlegend=False)
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
@@ -337,7 +362,6 @@ with tab_dash:
                         
                         fig_p_pie = px.pie(df_p_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
                         fig_p_pie.update_traces(textposition='inside', textinfo='percent')
-                        # Altura das pizzas aumentada de 80 para 120
                         fig_p_pie.update_layout(height=120, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
                         st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
                 
@@ -361,7 +385,6 @@ with tab_dash:
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 
-                # Altura do Yamazumi aumentada para esticar até ao fim da folha
                 altura_grafico = max(260, len(df_f) * 26)
                 fig_gantt.update_layout(
                     yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
