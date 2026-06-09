@@ -1,11 +1,3 @@
-Sem problemas! Para garantir que não haja erros de formatação no Python, siga este passo a passo com muita atenção:
-
-1. **Apague tudo** o que tem atualmente no seu ficheiro `Cronos_nhs.py`. Deixe-o completamente em branco.
-2. Na caixa preta abaixo, passe o rato no **canto superior direito** e clique no botão **Copy code** (ou "Copiar"). *Não tente selecionar o texto com o rato para não copiar acidentalmente caracteres invisíveis ou aspas quebradas.*
-3. Cole no seu ficheiro `Cronos_nhs.py` e guarde.
-
-Aqui está o código completo, ajustado e limpo:
-
 ```python
 import streamlit as st
 import pandas as pd
@@ -403,5 +395,3 @@ with tab_dash:
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
-
-```
