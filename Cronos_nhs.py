@@ -1,4 +1,12 @@
-``python
+Sem problemas! Para garantir que não haja erros de formatação no Python, siga este passo a passo com muita atenção:
+
+1. **Apague tudo** o que tem atualmente no seu ficheiro `Cronos_nhs.py`. Deixe-o completamente em branco.
+2. Na caixa preta abaixo, passe o rato no **canto superior direito** e clique no botão **Copy code** (ou "Copiar"). *Não tente selecionar o texto com o rato para não copiar acidentalmente caracteres invisíveis ou aspas quebradas.*
+3. Cole no seu ficheiro `Cronos_nhs.py` e guarde.
+
+Aqui está o código completo, ajustado e limpo:
+
+```python
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -142,7 +150,7 @@ st.markdown("""
     .op-esq { top: calc(50% - 13px); left: -38px; }
     .op-dir { top: calc(50% - 13px); right: -38px; }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 df_tp = carregar_tp()
 df_cfg = carregar_cfg_postos()
