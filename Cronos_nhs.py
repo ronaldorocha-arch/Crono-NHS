@@ -13,9 +13,15 @@ def carregar_tp():
     return pd.read_csv(FILE_TP)
 
 def carregar_cfg_postos():
+    colunas_padrao = ["Produto", "Posto", "Flow Rack", "Andon", "WIP (Estoque)"]
     if not os.path.exists(FILE_POSTOS):
-        return pd.DataFrame(columns=["Produto", "Posto", "Flow Rack", "Andon", "WIP (Estoque)"])
-    return pd.read_csv(FILE_POSTOS)
+        return pd.DataFrame(columns=colunas_padrao)
+    
+    df = pd.read_csv(FILE_POSTOS)
+    for col in colunas_padrao:
+        if col not in df.columns:
+            df[col] = 0 if col == "WIP (Estoque)" else "Não"
+    return df
 
 st.set_page_config(page_title="CronoNHS 2.0 - A4", layout="wide")
 
@@ -23,72 +29,51 @@ st.set_page_config(page_title="CronoNHS 2.0 - A4", layout="wide")
 st.markdown("""
     <style>
     /* ---------------------------------------------------
-       BORDA GLOBAL PARA O CONTEÚDO (TELA E IMPRESSÃO)
-    --------------------------------------------------- */
-    .folha-impressao {
-        border: 3px solid #000;
-        padding: 15px;
-        background-color: #fff;
-        border-radius: 4px;
-        box-sizing: border-box;
-    }
-
-    /* ---------------------------------------------------
        HACK PARA IMPRESSÃO A4 PAISAGEM PERFEITA
     --------------------------------------------------- */
     @media print {
         @page { 
             size: A4 landscape; 
-            margin: 5mm; /* Margem mínima da página física */
+            margin: 5mm; 
         }
         
-        /* Esconde menus, rodapés e abas do Streamlit */
-        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"] { 
+        /* Oculta tudo que não deve aparecer na folha impressa */
+        header, footer, [data-testid="stSidebar"], 
+        [data-baseweb="tab-list"], /* Abas */
+        [data-testid="stSelectbox"], /* Seletor de Célula */
+        h1 /* Título principal CronoNHS */ { 
             display: none !important; 
         }
         
-        /* Força as cores a aparecerem no papel */
-        * { 
-            -webkit-print-color-adjust: exact !important; 
-            color-adjust: exact !important; 
-        }
-        
-        html, body, .stApp, .block-container { 
+        /* Aplica a margem retangular direto no container do Streamlit */
+        .block-container { 
             width: 100% !important; 
             max-width: 100% !important; 
-            background-color: white !important; 
+            padding: 8mm !important;
             margin: 0 !important; 
-            padding: 0 !important;
+            border: 3px solid #000 !important; /* BORDA GLOBAL DA FOLHA */
+            background-color: white !important;
+            box-sizing: border-box !important;
         }
         
-        /* Aplica o zoom para caber na folha sem espremer os gráficos */
-        body { zoom: 0.75; }
+        /* Ajuste fino do zoom para caber certinho no A4 */
+        body { zoom: 0.72; }
         
-        /* Configura a borda para ocupar todo o espaço visível na impressão */
-        .folha-impressao {
-            border: 3px solid #000 !important;
-            padding: 10mm !important;
-            min-height: 95vh !important;
-            page-break-inside: avoid;
-        }
-
-        /* Impede que as colunas quebrem de forma errada */
+        /* Evita quebras anormais */
         [data-testid="column"] { min-width: 0 !important; }
     }
     
     /* ---------------------------------------------------
-       ESTILOS VISUAIS DO DASHBOARD
+       ESTILOS VISUAIS DO DASHBOARD (TELA)
     --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
     .titulo-secao { text-align: center; font-weight: bold; font-size: 14px; margin: 15px 0 10px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
     
-    /* Legendas e Caixas */
     .caixa-padrao { border: 1px solid #000; padding: 8px; margin-bottom: 10px; font-size: 11px; background: #fff;}
     .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 20px; text-align: center; margin: 0 5px; display: inline-block; }
     
-    /* Carta de Trabalho UI */
     .layout-linha { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 10px; }
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 800px; margin: 0 auto;}
     
@@ -127,7 +112,7 @@ with tab_cad:
     qtd_postos = c2.number_input("Nº Postos", min_value=1, value=3)
     takt_input = c3.number_input("Takt Time (s)", min_value=1.0, value=261.0)
     demanda_input = c4.number_input("Demanda", min_value=1, value=116)
-    tempo_disp_input = c5.number_input("Tempo Disp. (s)", min_value=1, value=30312) # <-- NOVO CAMPO PARA O CALCULO BATER
+    tempo_disp_input = c5.number_input("Tempo Disp. (s)", min_value=1, value=30312) 
     layout_tipo = c6.selectbox("Layout", ["Em Linha (Reta)", "Célula em U"])
     
     epis_selecionados = st.multiselect("EPIs Necessários", ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas", "🎧 Protetor", "🧢 Touca"], default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas"])
@@ -195,9 +180,6 @@ with tab_dash:
             tc_total, tc_max = df_f['Tempo (s)'].sum().round(1), df_f.groupby('Posto')['Tempo (s)'].sum().max().round(1)
         else:
             tc_total, tc_max = 0, 0
-            
-        # --- ABRINDO A DIV DA BORDA GERAL ---
-        st.markdown("<div class='folha-impressao'>", unsafe_allow_html=True)
         
         # CABEÇALHO
         st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
@@ -292,20 +274,15 @@ with tab_dash:
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
                 df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC (cronometrado)'}, inplace=True)
                 
-                # --- APLICANDO A LÓGICA DE CÁLCULO EXATA DO SEU EXCEL ---
                 df_cap['TC (saturação)'] = (df_cap['TC (cronometrado)'] * 1.10).round(0).astype(int)
                 df_cap['TAKT'] = int(takt)
                 
-                # CAP. DIÁRIA = Tempo Disponível (ex: 30312) / TC(saturação)
                 df_cap['CAP. DIÁRIA'] = (tempo_disp / df_cap['TC (saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
                 df_cap['OPERADOR RES'] = 1
                 
-                # CÁLCULO DA CAPACIDADE (%): =(A10/D3)/E3 -> (Tempo_Disp/TAKT) / Cap_Diária
+                # CÁLCULO DA CAPACIDADE DE ACORDO COM O SEU EXCEL
                 df_cap['Capacidade (%)'] = (((tempo_disp / df_cap['TAKT']) / df_cap['CAP. DIÁRIA']) * 100).round(2).astype(str) + "%"
                 
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
-
-        # --- FECHANDO A DIV DA BORDA GERAL ---
-        st.markdown("</div>", unsafe_allow_html=True)
