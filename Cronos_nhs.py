@@ -31,8 +31,8 @@ st.markdown("""
             margin: 0mm !important; 
         }
         
-        /* Esconde menus do Streamlit, Abas de navegação e o Título Principal (h1) */
-        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1 { 
+        /* Esconde menus do Streamlit, Abas, Título Principal E OS CONTROLES RÁPIDOS */
+        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"] { 
             display: none !important; 
         }
         
@@ -104,7 +104,7 @@ st.markdown("""
     .layout-linha { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 8px; }
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 800px; margin: 0 auto;}
     
-    .caixa-posto { border: 2px solid #333; padding: 8px; text-align: center; background-color: #fff; position: relative; min-width: 110px; flex: 1; transition: background 0.2s;}
+    .caixa-posto { border: 2px solid #333; padding: 8px; text-align: center; background-color: #fff; position: relative; min-width: 110px; flex: 1;}
     .flow-rack { width: 100%; height: 14px; background: #bbb; border: 1px solid #555; margin-bottom: 8px; font-size: 9px; line-height: 14px; color: #000;}
     .andon { position: absolute; top: -10px; left: -10px; width: 18px; height: 18px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red;}
     .wip-badge { position: absolute; top: 40%; right: -12px; width: 22px; height: 22px; background-color: #666; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10; border: 2px solid #fff;}
@@ -199,6 +199,7 @@ with tab_cad:
 # =====================================================================
 with tab_dash:
     if not df_tp.empty:
+        # Seletor de visualização fica oculto na impressão pelo CSS genérico de selectbox
         p_sel = st.selectbox("Visualizar Célula:", df_tp['Produto'].unique())
         df_f = df_tp[df_tp['Produto'] == p_sel].sort_values(by=["Posto"]).copy()
         df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
@@ -228,41 +229,38 @@ with tab_dash:
         # =====================================================================
         col_sup_esq, col_sup_dir = st.columns([1.1, 0.9])
         
-        # --- LADO ESQUERDO SUPERIOR: CARTA DE TRABALHO INTERATIVA (DRAG & DROP) ---
+        # --- LADO ESQUERDO SUPERIOR: CARTA DE TRABALHO E AJUSTES RÁPIDOS ---
         with col_sup_esq:
             st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO ({st.session_state.get('layout')})</div>", unsafe_allow_html=True)
             
-            # Código Javascript injetado de forma nativa para permitir arrastar e soltar com o mouse
-            st.markdown("""
-                <script>
-                function allowDrop(ev) {
-                    ev.preventDefault();
-                }
-                function drag(ev) {
-                    ev.dataTransfer.setData("text", ev.target.id);
-                }
-                function drop(ev) {
-                    ev.preventDefault();
-                    var data = ev.dataTransfer.getData("text");
-                    var dragElement = document.getElementById(data);
-                    
-                    // Se soltar na caixa do posto, anexa lá dentro
-                    if (ev.target.classList.contains('caixa-posto')) {
-                        ev.target.appendChild(dragElement);
-                    } else {
-                        // Se cair num elemento filho (ex: bolinhas ou operador), encontra a caixa do posto pai
-                        var postoPai = ev.target.closest('.caixa-posto');
-                        if (postoPai) {
-                            postoPai.appendChild(dragElement);
-                        }
-                    }
-                }
-                </script>
-            """, unsafe_allow_html=True)
+            postos_disp = list(df_f['Posto'].unique())
             
+            # --- 🛠️ INÍCIO DOS CONTROLES RÁPIDOS ---
+            st.markdown("<div class='no-print' style='background:#f4f4f4; padding:10px; border-radius:5px; border:1px solid #ccc; margin-bottom:15px;'><b>⚙️ Ajuste Rápido do Layout (Desaparece na impressão)</b></div>", unsafe_allow_html=True)
+            
+            # Pega as configurações atuais para deixar selecionado
+            andons_atuais = [p for p in postos_disp if not df_c[df_c['Posto']==p].empty and df_c[df_c['Posto']==p]['Andon'].values[0] == 'Sim']
+            flows_atuais = [p for p in postos_disp if not df_c[df_c['Posto']==p].empty and df_c[df_c['Posto']==p]['Flow Rack'].values[0] == 'Sim']
+            
+            c_q1, c_q2 = st.columns(2)
+            novos_andons = c_q1.multiselect("📍 Postos com Andon:", postos_disp, default=andons_atuais, key="m_andon")
+            novos_flows = c_q2.multiselect("📦 Postos com Flow Rack:", postos_disp, default=flows_atuais, key="m_flow")
+            
+            # Atualiza os dados imediatamente se o utilizador modificar os controlos na tela
+            if set(novos_andons) != set(andons_atuais) or set(novos_flows) != set(flows_atuais):
+                for p in postos_disp:
+                    idx = df_cfg[(df_cfg['Produto'] == p_sel) & (df_cfg['Posto'] == p)].index
+                    if not idx.empty:
+                        df_cfg.loc[idx, 'Andon'] = 'Sim' if p in novos_andons else 'Não'
+                        df_cfg.loc[idx, 'Flow Rack'] = 'Sim' if p in novos_flows else 'Não'
+                # Salva no arquivo CSV para não perder e recarrega na memória
+                df_cfg.to_csv(FILE_POSTOS, index=False)
+                df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
+            # --- 🛠️ FIM DOS CONTROLES RÁPIDOS ---
+
             c_leg_epi, c_layout_desenho = st.columns([0.3, 0.7])
             with c_leg_epi:
-                st.markdown("<div class='caixa-padrao' style='font-size:10px;'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#666;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> FlowRack<br><br><span style='color:blue; font-size:9px;'>*Arraste os ícones vermelhos ou cinzentos com o rato para mudar de posto antes de imprimir!</span></div>", unsafe_allow_html=True)
+                st.markdown("<div class='caixa-padrao' style='font-size:10px;'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#666;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> FlowRack</div>", unsafe_allow_html=True)
                 epis_html = "".join([f"<span class='epi-text'>{epi.split(' ')[0]}</span>" for epi in st.session_state.get('epis', [])])
                 st.markdown(f"<div class='caixa-padrao' style='text-align:center; font-size:10px;'><b>EPI'S:</b><br>{epis_html}</div>", unsafe_allow_html=True)
                 
@@ -270,6 +268,7 @@ with tab_dash:
                 postos = df_f['Posto'].unique()
                 html_layout = f"<div class='{'layout-u' if st.session_state.get('layout') == 'Célula em U' else 'layout-linha'}'>"
                 postos_display = list(postos)
+                
                 if st.session_state.get('layout') == 'Célula em U' and len(postos_display) > 2:
                     metade = (len(postos_display) + 1) // 2
                     postos_display = postos_display[:metade] + list(reversed(postos_display[metade:]))
@@ -284,14 +283,11 @@ with tab_dash:
                     qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
                     bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
                     
-                    # Definição das dropzones (ondragover e ondrop)
-                    html_posto = f"<div class='caixa-posto' ondragover='allowDrop(event)' ondrop='drop(event)' id='zona-{p_nome.replace(' ', '')}'>"
-                    
-                    # Elementos configurados como arrastáveis (draggable='true')
+                    html_posto = f"<div class='caixa-posto'>"
                     if tem_andon: 
-                        html_posto += f"<div class='andon' draggable='true' ondragstart='drag(event)' id='andon-{p_nome.replace(' ', '')}' style='cursor:move;' title='Arraste-me para outro posto!'></div>"
+                        html_posto += f"<div class='andon'></div>"
                     if tem_flow: 
-                        html_posto += f"<div class='flow-rack' draggable='true' ondragstart='drag(event)' id='flow-{p_nome.replace(' ', '')}' style='cursor:move;' title='Arraste-me para outro posto!'>FLOW RACK</div>"
+                        html_posto += f"<div class='flow-rack'>FLOW RACK</div>"
                     
                     html_posto += f"<b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}<div class='operador'>👤</div>"
                     if wip > 0: html_posto += f"<div class='wip-badge'>{wip}</div>"
@@ -315,7 +311,6 @@ with tab_dash:
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
-                # Renderização das mini pizzas perfeitamente sob cada coluna do GBO
                 postos_gbo = sorted(df_f['Posto'].unique())
                 cols_pizza = st.columns(len(postos_gbo))
                 
@@ -329,7 +324,6 @@ with tab_dash:
                         fig_p_pie.update_layout(height=80, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
                         st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
                 
-                # Legenda do GBO/Pizza posicionada estrategicamente no final da secção
                 st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 4px;'> "
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
                             "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
@@ -340,7 +334,7 @@ with tab_dash:
         # =====================================================================
         # QUADRANTE INFERIOR (PARTE DE BAIXO)
         # =====================================================================
-        st.write(" ") # Pequeno espaçador vertical
+        st.write(" ")
         col_inf_esq, col_inf_dir = st.columns([1.1, 0.9])
         
         # --- LADO ESQUERDO INFERIOR: TABELA COMBINADA (YAMAZUMI) ---
@@ -352,7 +346,6 @@ with tab_dash:
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 
-                # Altura responsiva calculada para não estourar os limites da folha
                 altura_grafico = max(180, len(df_f) * 22)
                 fig_gantt.update_layout(
                     yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
@@ -379,5 +372,4 @@ with tab_dash:
                 df_cap['Capacidade (saturação) %'] = ((df_cap['TC (saturação)'] / takt) * 100).round(2).astype(str) + "%"
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
-                # Exibição da tabela ocupando 100% da largura, com scrolls laterais desativados via CSS de impressão
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
