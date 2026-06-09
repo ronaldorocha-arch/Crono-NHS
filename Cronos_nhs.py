@@ -78,7 +78,7 @@ st.markdown("""
     .caixa-cabecalho { border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold; font-size: 14px; background-color: #f4f4f4;}
     .titulo-secao { text-align: center; font-weight: bold; font-size: 15px; margin: 10px 0 10px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
     
-    .caixa-padrao { border: 1px solid #000; padding: 8px; margin-bottom: 5px; font-size: 12px; background: #fff;}
+    .caixa-padrao { border: 1px solid #000; padding: 6px; margin-bottom: 5px; font-size: 12px; background: #fff;}
     .icon-legenda { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 20px; text-align: center; margin: 0 4px; display: inline-block; }
     
@@ -201,7 +201,7 @@ with tab_cad:
 # =====================================================================
 with tab_dash:
     if not df_tp.empty:
-        # --- 🚨 SELEÇÃO DO TAMANHO DA FOLHA PARA IMPRESSÃO CORRIGIDA 🚨 ---
+        # --- SELEÇÃO DO TAMANHO DA FOLHA PARA IMPRESSÃO CORRIGIDA ---
         st.markdown("<div class='no-print' style='background:#eef7ff; padding:15px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'><b style='color:#0056b3; font-size: 15px;'>🖨️ Tamanho da Impressão (Ctrl+P)</b><br><span style='font-size: 13px; color: #555;'>Selecione a folha abaixo antes de imprimir. O sistema ajustará o zoom automaticamente para evitar cortes.</span></div>", unsafe_allow_html=True)
         tam_folha = st.radio("Selecione o tamanho:", ["A3", "A4"], horizontal=True, label_visibility="collapsed")
 
@@ -252,7 +252,8 @@ with tab_dash:
         col_sup_esq, col_sup_dir = st.columns([1.1, 0.9])
         
         with col_sup_esq:
-            st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO ({st.session_state.get('layout')})</div>", unsafe_allow_html=True)
+            # 🚨 REMOVIDO O "(EM LINHA)" DESTE TÍTULO 🚨
+            st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO</div>", unsafe_allow_html=True)
             
             postos_disp = list(df_f['Posto'].unique())
             
