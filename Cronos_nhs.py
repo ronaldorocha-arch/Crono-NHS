@@ -201,11 +201,9 @@ with tab_cad:
 # =====================================================================
 with tab_dash:
     if not df_tp.empty:
-        st.markdown("<div class='no-print' style='background:#eef7ff; padding:10px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'>", unsafe_allow_html=True)
-        col_print1, col_print2 = st.columns([1, 2])
-        tam_folha = col_print1.radio("🖨️ Tamanho da Impressão (Ctrl+P):", ["A3", "A4"], horizontal=True)
-        col_print2.markdown("<br><span style='font-size: 12px; color: #555;'>Selecione o tamanho antes de pressionar Ctrl+P. O sistema ajustará o zoom automaticamente para a folha escolhida.</span>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        # --- 🚨 SELEÇÃO DO TAMANHO DA FOLHA PARA IMPRESSÃO CORRIGIDA 🚨 ---
+        st.markdown("<div class='no-print' style='background:#eef7ff; padding:15px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'><b style='color:#0056b3; font-size: 15px;'>🖨️ Tamanho da Impressão (Ctrl+P)</b><br><span style='font-size: 13px; color: #555;'>Selecione a folha abaixo antes de imprimir. O sistema ajustará o zoom automaticamente para evitar cortes.</span></div>", unsafe_allow_html=True)
+        tam_folha = st.radio("Selecione o tamanho:", ["A3", "A4"], horizontal=True, label_visibility="collapsed")
 
         if tam_folha == "A4":
             st.markdown("""
@@ -243,7 +241,7 @@ with tab_dash:
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
         with cc2: st.markdown(f"<div class='caixa-cabecalho'>Depto: {st.session_state.get('depto')}</div>", unsafe_allow_html=True)
-        with cc3: st.markdown(f"<div class='caixa-cabecalho'>Tc Total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
+        with cc3: st.markdown(f"<div class='caixa-cabecalho'>Tc total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
         st.write("")
         
         color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
@@ -387,7 +385,6 @@ with tab_dash:
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
                 df_cap.rename(columns={'Posto': 'Operação', 'Tempo (s)': 'Tc'}, inplace=True)
                 
-                # Nomes em minúsculo (apenas primeira letra maiúscula) com quebra de linha <br> para poupar espaço horizontal
                 df_cap['Tc<br>(saturação)'] = (df_cap['Tc'] * 1.10).round(0).astype(int)
                 df_cap['Takt'] = int(takt)
                 df_cap['Cap.<br>diária'] = (28800 / df_cap['Tc<br>(saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
@@ -395,10 +392,8 @@ with tab_dash:
                 df_cap['Capacidade<br>(saturação) %'] = ((df_cap['Tc<br>(saturação)'] / takt) * 100).round(2).astype(str) + "%"
                 df_cap['Demanda<br>(pçs/dia)'] = int(demanda)
                 
-                # Reordenar colunas com os novos nomes
                 colunas_mostrar = ['Operação', 'Tc', 'Tc<br>(saturação)', 'Takt', 'Cap.<br>diária', 'Op.', 'Capacidade<br>(saturação) %', 'Demanda<br>(pçs/dia)']
                 df_cap_display = df_cap[colunas_mostrar]
                 
-                # Gera uma Tabela HTML estática (nunca é cortada na impressão e permite CSS livre)
                 tabela_html = df_cap_display.to_html(index=False, classes="tabela-cap", escape=False)
                 st.markdown(tabela_html, unsafe_allow_html=True)
