@@ -55,12 +55,12 @@ st.markdown("""
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
-            gap: 15px !important; /* Menos gap para usar mais espaço real */
+            gap: 15px !important; 
             justify-content: space-between !important;
         }
         
         [data-testid="column"] { 
-            flex: 1 1 50% !important; /* Força as colunas a usarem todo o espaço disponível */
+            flex: 1 1 50% !important; 
             min-width: 0 !important; 
             display: block !important;
             page-break-inside: avoid !important;
@@ -99,8 +99,8 @@ st.markdown("""
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px !important; width: 100%; margin: 0 auto; padding: 60px 0px;}
     
     .caixa-posto { 
-        min-width: 150px; /* Reduzido para caber mais postos em linha */
-        flex: 1; /* Estica para preencher a largura */
+        min-width: 150px; 
+        flex: 1; 
         height: 140px !important; 
         border: 2px solid #333; 
         background-color: #fff; 
@@ -271,7 +271,6 @@ with tab_dash:
         # =====================================================================
         # QUADRANTE SUPERIOR (PARTE DE CIMA)
         # =====================================================================
-        # Alterado a proporção das colunas para dividir a tela mais igualmente (50/50)
         col_sup_esq, col_sup_dir = st.columns([1, 1])
         
         with col_sup_esq:
@@ -297,7 +296,6 @@ with tab_dash:
                 df_cfg.to_csv(FILE_POSTOS, index=False)
                 df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
 
-            # Ajustado para que o desenho ocupe muito mais espaço horizontal do que as legendas
             c_leg_epi, c_layout_desenho = st.columns([0.25, 0.75])
             with c_leg_epi:
                 st.markdown("<div class='caixa-padrao'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#000;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> Ponto de Uso</div>", unsafe_allow_html=True)
@@ -346,20 +344,24 @@ with tab_dash:
                 st.markdown(html_layout, unsafe_allow_html=True)
 
         with col_sup_dir:
+            # GBO (Gráfico alterado para degradê de azul com base no tempo)
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
+                # Alterando a cor para refletir o "Tempo (s)" com a escala Blues contínua
+                fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Tempo (s)", 
+                                 color_continuous_scale="Blues", text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
                 
                 totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
                 for posto, total in totais_gbo.items():
                     fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=10)
 
-                # Aumentado o gráfico para ocupar melhor o espaço
-                fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=15, b=0), showlegend=False)
+                # Ocultando a legenda de degradê (barra de cor) para economizar espaço
+                fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=15, b=0), showlegend=False, coloraxis_showscale=False)
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
+                # Gráficos de Pizza (Mantém as cores de valor agregado)
                 postos_gbo = sorted(df_f['Posto'].unique())
                 cols_pizza = st.columns(len(postos_gbo))
                 
@@ -370,10 +372,10 @@ with tab_dash:
                         
                         fig_p_pie = px.pie(df_p_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
                         fig_p_pie.update_traces(textposition='inside', textinfo='percent')
-                        # Aumentado a pizza 
                         fig_p_pie.update_layout(height=140, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
                         st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
                 
+                # Legenda das Pizzas (Valor Agregado)
                 st.markdown("<div style='text-align:center; font-size: 14px; margin-top: 10px;'> "
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
                             "<span class='icon-legenda' style='background:#ffff00; margin-left:15px;'></span> Semi Agrega "
@@ -384,7 +386,6 @@ with tab_dash:
         # QUADRANTE INFERIOR
         # =====================================================================
         st.write(" ")
-        # Alterado a proporção das colunas para dividir a tela mais igualmente
         col_inf_esq, col_inf_dir = st.columns([1, 1])
         
         with col_inf_esq:
