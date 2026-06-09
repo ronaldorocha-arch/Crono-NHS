@@ -1,6 +1,6 @@
-Aqui está o código completo e final, já com todos os ajustes consolidados: a bancada única conectada (sem espaços e com `flex: none`), o WIP no canto inferior direito, o nome "Ponto de Uso" e a posição dinâmica do operador.
+Aqui está o código completo, limpo e com todos os ajustes finais consolidados (bancadas unidas, WIP à direita, Ponto de Uso, posição do operador móvel e ajuste para folha A3).
 
-Basta copiar o bloco abaixo e substituir tudo no seu ficheiro `app.py`:
+⚠️ **Dica Importante:** Para não copiar aquele texto estranho da documentação novamente, passe o rato no canto superior direito desta caixa preta de código abaixo e clique no botão **"Copy code"** (ou "Copiar"). Depois é só colar no seu ficheiro `Cronos_nhs.py` (apagando tudo o que lá estiver antes).
 
 ```python
 import streamlit as st
@@ -22,6 +22,7 @@ def carregar_cfg_postos():
         return pd.DataFrame(columns=["Produto", "Posto", "Ponto de Uso", "Andon", "WIP", "Posição Operador"])
     
     df = pd.read_csv(FILE_POSTOS)
+    # Garante compatibilidade com versões anteriores
     if "Flow Rack" in df.columns:
         df.rename(columns={"Flow Rack": "Ponto de Uso"}, inplace=True)
     if "WIP (Estoque)" in df.columns:
@@ -44,6 +45,7 @@ st.markdown("""
             margin: 5mm !important; 
         }
         
+        /* Esconde elementos indesejados na impressão */
         header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"] { 
             display: none !important; 
         }
@@ -66,6 +68,7 @@ st.markdown("""
             zoom: 0.75 !important;
         }
         
+        /* Força colunas lado a lado na impressão */
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -81,6 +84,7 @@ st.markdown("""
             page-break-inside: avoid !important;
         }
         
+        /* Libera a tabela de capacidade */
         .stDataFrame, [data-testid="stDataFrame"], [data-testid="stGridVirtualizer"] {
             width: 100% !important;
             overflow: visible !important;
@@ -106,7 +110,7 @@ st.markdown("""
     .layout-linha { display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; gap: 0px !important; padding: 45px 10px; }
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px !important; max-width: 800px; margin: 0 auto; padding: 45px 10px;}
     
-    /* 🚨 CAIXA DO POSTO: IMPEDE O STREAMLIT DE SEPARÁ-LOS (flex: none) 🚨 */
+    /* 🚨 CAIXA DO POSTO: IMPEDE O STREAMLIT DE SEPARÁ-LOS 🚨 */
     .caixa-posto { 
         width: 200px !important; 
         height: 100px !important; 
@@ -129,7 +133,7 @@ st.markdown("""
     
     /* INDICADORES */
     .andon { position: absolute; top: -12px; left: -12px; width: 22px; height: 22px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red; z-index: 10;}
-    /* WIP movido para a direita (right: -12px) */
+    /* WIP movido para a direita */
     .wip-badge { position: absolute; bottom: -12px; right: -12px; width: 24px; height: 24px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; z-index: 10; border: 2px solid #fff;}
     
     .bolinha { display: inline-flex; height: 22px; width: 22px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 11px; z-index: 5;}
