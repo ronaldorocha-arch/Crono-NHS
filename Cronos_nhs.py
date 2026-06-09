@@ -19,14 +19,17 @@ def carregar_cfg_postos():
 
 st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
 
-# --- CSS PROFISSIONAL & CORREÇÃO DE IMPRESSÃO ---
+# --- CSS PROFISSIONAL & HACK ULTRA ESTRITO DE IMPRESSÃO EM 1 PÁGINA ---
 st.markdown("""
     <style>
     /* ---------------------------------------------------
-       HACK PARA IMPRESSÃO A3 PERFEITA (SEM CORTES)
+       FORÇAR TODO O CONTEÚDO EM APENAS 1 PÁGINA A3
     --------------------------------------------------- */
     @media print {
-        @page { size: A3 landscape; margin: 8mm; }
+        @page { 
+            size: A3 landscape; 
+            margin: 0mm !important; /* Remove margens do navegador para ganhar espaço */
+        }
         
         /* Esconde menus do Streamlit e o Título Principal (h1) */
         header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1 { 
@@ -39,29 +42,39 @@ st.markdown("""
             color-adjust: exact !important; 
         }
         
-        /* DESTRAVA A LARGURA DO STREAMLIT PARA CABER NA FOLHA */
-        html, body, .stApp { 
+        /* Destrava larguras e remove rolagens */
+        html, body, .stApp, .block-container { 
             width: 100% !important; 
             max-width: 100% !important; 
             background-color: white !important; 
             margin: 0 !important; 
             padding: 0 !important;
+            overflow: visible !important;
         }
         
-        .block-container { 
-            max-width: 100% !important; 
-            width: 100% !important; 
-            padding: 0 !important; 
-            margin: 0 !important; 
+        /* Reduz o padding interno do container do Streamlit */
+        .block-container {
+            padding-top: 5mm !important;
+            padding-bottom: 0mm !important;
+            padding-left: 5mm !important;
+            padding-right: 5mm !important;
         }
         
-        /* Zoom ideal para ajustar todos os elementos e gráficos na folha A3 */
-        body { zoom: 0.82; }
+        /* ESCALA GLOBAL: Reduz proporcionalmente todo o painel para caber estritamente em 1 página */
+        .stMain {
+            transform: scale(0.72) !important;
+            transform-origin: top left !important;
+            width: 138% !important; /* Compensa a perda de largura gerada pelo scale(0.72) -> 1 / 0.72 */
+            height: auto !important;
+            page-break-inside: avoid !important;
+        }
         
-        /* Impede que as colunas e tabelas quebrem de forma errada */
-        [data-testid="column"] { min-width: 0 !important; }
+        /* Impede que as colunas e tabelas quebrem linhas ou criem páginas extras */
+        [data-testid="column"] { 
+            min-width: 0 !important; 
+            page-break-inside: avoid !important;
+        }
         
-        /* Garante que o dataframe de capacidade não adicione barras de rolagem na impressão */
         .stDataFrame, [data-testid="stDataFrame"] {
             width: 100% !important;
             overflow: visible !important;
@@ -69,7 +82,7 @@ st.markdown("""
     }
     
     /* ---------------------------------------------------
-       ESTILOS VISUAIS DO DASHBOARD
+       ESTILOS VISUAIS DO DASHBOARD (TELA)
     --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
@@ -248,7 +261,7 @@ with tab_dash:
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 
-                altura_grafico = max(250, len(df_f) * 25)
+                altura_grafico = max(220, len(df_f) * 23)
                 fig_gantt.update_layout(
                     yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
                     xaxis={'title': 'Tempo (s)'},
@@ -259,7 +272,7 @@ with tab_dash:
                 fig_gantt.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
 
-        # --- DIREITA: GBO, PIZZAS POR POSTO E CAPACIDADE ---
+        # --- DIREITA: GBO, PIZZAS ALINHADAS E CAPACIDADE ---
         with col_dir:
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
@@ -273,41 +286,40 @@ with tab_dash:
                 for posto, total in totais_gbo.items():
                     fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=12)
 
-                fig_gbo.update_layout(height=240, margin=dict(l=0, r=0, t=15, b=0), showlegend=False)
+                fig_gbo.update_layout(height=230, margin=dict(l=0, r=0, t=15, b=0), showlegend=False)
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
                 # Legenda customizada para GBO
-                st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 5px; margin-bottom: 15px;'>"
+                st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 5px; margin-bottom: 10px;'> "
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
                             "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
                             "<span class='icon-legenda' style='background:#ff9900; margin-left:10px;'></span> Não Agrega"
                             "</div>", unsafe_allow_html=True)
             
-            # --- NOVO: UM GRÁFICO DE PIZZA PEQUENO PARA CADA POSTO (LADO A LADO) ---
-            st.markdown("<div class='titulo-secao'>PROPORÇÃO DE VALOR POR POSTO</div>", unsafe_allow_html=True)
+            # --- PIZZAS PEQUENAS E CENTRALIZADAS LOGO ABAIXO DAS COLUNAS (SEM TÍTULO) ---
             if not df_f.empty:
                 postos_gbo = sorted(df_f['Posto'].unique())
-                cols_pizza = st.columns(len(postos_gbo)) # Cria colunas dinâmicas dependendo do número de postos
+                cols_pizza = st.columns(len(postos_gbo)) # Colunas combinando exatamente com o gráfico de cima
                 
                 for idx, p_nome in enumerate(postos_gbo):
                     with cols_pizza[idx]:
-                        st.markdown(f"<div style='text-align:center; font-size:11px; font-weight:bold;'>{p_nome}</div>", unsafe_allow_html=True)
+                        # Espaço em HTML centralizado para identificar o posto da pizza sutilmente
+                        st.markdown(f"<div style='text-align:center; font-size:10px; font-weight:bold; color:#555;'>{p_nome}</div>", unsafe_allow_html=True)
                         df_p_pizza = df_f[df_f['Posto'] == p_nome].groupby('Classificação')['Tempo (s)'].sum().reset_index()
                         
                         fig_p_pie = px.pie(df_p_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
-                        fig_p_pie.update_traces(textposition='inside', textinfo='percent') # Mostra apenas a porcentagem lá dentro para não poluir
+                        fig_p_pie.update_traces(textposition='inside', textinfo='percent')
                         fig_p_pie.update_layout(
-                            height=110, # Tamanho menor e padronizado
-                            margin=dict(l=5, r=5, t=5, b=5), 
+                            height=95, # Compacto e padronizado para manter tudo na folha
+                            margin=dict(l=2, r=2, t=2, b=2), 
                             showlegend=False
                         )
                         st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
 
-            st.markdown("<div class='titulo-secao' style='margin-top: 20px;'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
+            st.markdown("<div class='titulo-secao' style='margin-top: 15px;'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
-                # Colunas renomeadas para TC e OP. conforme solicitado
                 df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC'}, inplace=True)
                 
                 df_cap['TC (saturação)'] = (df_cap['TC'] * 1.10).round(0).astype(int)
@@ -319,4 +331,3 @@ with tab_dash:
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
-                
