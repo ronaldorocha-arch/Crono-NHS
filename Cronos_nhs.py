@@ -28,11 +28,11 @@ st.markdown("""
     @media print {
         @page { 
             size: A3 landscape; 
-            margin: 0mm !important; /* Remove margens do navegador para ganhar espaço */
+            margin: 0mm !important; 
         }
         
-        /* Esconde menus do Streamlit e o Título Principal (h1) */
-        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1 { 
+        /* Esconde menus do Streamlit, Título Principal e Legenda lateral solta */
+        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .legenda-lateral-print { 
             display: none !important; 
         }
         
@@ -42,7 +42,7 @@ st.markdown("""
             color-adjust: exact !important; 
         }
         
-        /* Destrava larguras e remove rolagens */
+        /* Destrava larguras, zera paddings e remove rolagens indesejadas */
         html, body, .stApp, .block-container { 
             width: 100% !important; 
             max-width: 100% !important; 
@@ -52,19 +52,21 @@ st.markdown("""
             overflow: visible !important;
         }
         
-        /* Reduz o padding interno do container do Streamlit */
+        /* Margem sutil nas bordas da folha física */
         .block-container {
-            padding-top: 5mm !important;
-            padding-bottom: 0mm !important;
-            padding-left: 5mm !important;
-            padding-right: 5mm !important;
+            padding: 5mm 8mm 0mm 8mm !important;
         }
         
-        /* ESCALA GLOBAL: Reduz proporcionalmente todo o painel para caber estritamente em 1 página */
+        /* Remove espaçamentos exagerados entre blocos do Streamlit */
+        [data-testid="stVerticalBlock"] {
+            gap: 2px !important;
+        }
+        
+        /* ESCALA GLOBAL: Reduz proporcionalmente para travar estritamente em 1 página */
         .stMain {
-            transform: scale(0.72) !important;
+            transform: scale(0.70) !important;
             transform-origin: top left !important;
-            width: 138% !important; /* Compensa a perda de largura gerada pelo scale(0.72) -> 1 / 0.72 */
+            width: 142.8% !important; /* Compensa a perda de largura gerada pelo scale(0.70) */
             height: auto !important;
             page-break-inside: avoid !important;
         }
@@ -75,9 +77,14 @@ st.markdown("""
             page-break-inside: avoid !important;
         }
         
-        .stDataFrame, [data-testid="stDataFrame"] {
+        /* Garante exibição por inteiro do Quadro de Capacidade (sem scroll) */
+        .stDataFrame, [data-testid="stDataFrame"], [data-testid="stGridVirtualizer"] {
             width: 100% !important;
             overflow: visible !important;
+        }
+        div[data-testid="stDataFrame"] > div {
+            overflow: visible !important;
+            max-height: none !important;
         }
     }
     
@@ -86,30 +93,30 @@ st.markdown("""
     --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
     .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
-    .titulo-secao { text-align: center; font-weight: bold; font-size: 14px; margin: 15px 0 10px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
+    .titulo-secao { text-align: center; font-weight: bold; font-size: 14px; margin: 5px 0 8px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
     
     /* Legendas e Caixas */
-    .caixa-padrao { border: 1px solid #000; padding: 8px; margin-bottom: 10px; font-size: 11px; background: #fff;}
+    .caixa-padrao { border: 1px solid #000; padding: 6px; margin-bottom: 5px; font-size: 11px; background: #fff;}
     .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
-    .epi-text { font-size: 20px; text-align: center; margin: 0 5px; display: inline-block; }
+    .epi-text { font-size: 18px; text-align: center; margin: 0 4px; display: inline-block; }
     
     /* Carta de Trabalho UI */
-    .layout-linha { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 10px; }
-    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 800px; margin: 0 auto;}
+    .layout-linha { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 8px; }
+    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 800px; margin: 0 auto;}
     
-    .caixa-posto { border: 2px solid #333; padding: 10px; text-align: center; background-color: #fff; position: relative; min-width: 120px; flex: 1;}
-    .flow-rack { width: 100%; height: 15px; background: #bbb; border: 1px solid #555; margin-bottom: 10px; font-size: 9px; line-height: 15px; color: #000;}
-    .andon { position: absolute; top: -10px; left: -10px; width: 20px; height: 20px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red;}
-    .wip-badge { position: absolute; top: 40%; right: -15px; width: 25px; height: 25px; background-color: #666; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10; border: 2px solid #fff;}
+    .caixa-posto { border: 2px solid #333; padding: 8px; text-align: center; background-color: #fff; position: relative; min-width: 110px; flex: 1;}
+    .flow-rack { width: 100%; height: 14px; background: #bbb; border: 1px solid #555; margin-bottom: 8px; font-size: 9px; line-height: 14px; color: #000;}
+    .andon { position: absolute; top: -10px; left: -10px; width: 18px; height: 18px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red;}
+    .wip-badge { position: absolute; top: 40%; right: -12px; width: 22px; height: 22px; background-color: #666; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10; border: 2px solid #fff;}
     
-    .bolinha { display: inline-flex; height: 22px; width: 22px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 11px;}
+    .bolinha { display: inline-flex; height: 20px; width: 20px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 10px;}
     .b-1 { background-color: #00bcd4; }
     .b-2 { background-color: #4caf50; }
     .b-3 { background-color: #e040fb; }
     .b-4 { background-color: #ff9800; }
     .b-5 { background-color: #9c27b0; }
     
-    .operador { font-size: 24px; margin-top: 10px; color: #555;}
+    .operador { font-size: 22px; margin-top: 5px; color: #555;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -184,7 +191,8 @@ with tab_cad:
         st.success("Tudo salvo com sucesso!")
         st.rerun()
 
-# --- ABA 2: DASHBOARD COMPLETO ---
+
+# --- ABA 2: DASHBOARD COMPLETO (ESTRUTURA QUADRANTE A3 EXEMPLAR) ---
 with tab_dash:
     if not df_tp.empty:
         p_sel = st.selectbox("Visualizar Célula:", df_tp['Produto'].unique())
@@ -200,7 +208,7 @@ with tab_dash:
         else:
             tc_total, tc_max = 0, 0
             
-        # CABEÇALHO
+        # 1. CABEÇALHO SUPERIOR (UNIFICADO)
         st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
@@ -208,52 +216,98 @@ with tab_dash:
         with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
         st.write("")
         
-        # GRID DO A3
-        col_esq, col_meio, col_dir = st.columns([0.8, 2.0, 1.4])
-        
-        # --- ESQUERDA ---
-        with col_esq:
-            st.markdown("<div class='caixa-padrao'><b>LEGENDA (Layout)</b><br><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon (Sinalização)<br><br><span class='icon-legenda' style='background:#666;'></span> Estoque Intermediário<br><br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> Flow Rack (Ponto de Uso)</div>", unsafe_allow_html=True)
-            
-            # EPIs agora em linha (inline) para ocupar menos espaço
-            epis_html = "".join([f"<span class='epi-text'>{epi.split(' ')[0]}</span>" for epi in st.session_state.get('epis', [])])
-            st.markdown(f"<div class='caixa-padrao' style='text-align:center;'><b>EPI'S EXIGIDOS:</b><br>{epis_html}</div>", unsafe_allow_html=True)
+        # --- DEFINIÇÃO DOS MAPAS DE CORES ---
+        color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
 
-        # --- MEIO: CARTA DE TRABALHO E GANTT ---
-        with col_meio:
+        # =====================================================================
+        # QUADRANTE SUPERIOR (PARTE DE CIMA)
+        # =====================================================================
+        col_sup_esq, col_sup_dir = st.columns([1.1, 0.9])
+        
+        # --- PARTE DE CIMA / LADO ESQUERDO: CARTA DE TRABALHO ---
+        with col_sup_esq:
             st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO ({st.session_state.get('layout')})</div>", unsafe_allow_html=True)
             
-            postos = df_f['Posto'].unique()
-            html_layout = f"<div class='{'layout-u' if st.session_state.get('layout') == 'Célula em U' else 'layout-linha'}'>"
-            
-            postos_display = list(postos)
-            if st.session_state.get('layout') == 'Célula em U' and len(postos_display) > 2:
-                metade = (len(postos_display) + 1) // 2
-                fileira1 = postos_display[:metade]
-                fileira2 = list(reversed(postos_display[metade:]))
-                postos_display = fileira1 + fileira2
-            
-            for i, p_nome in enumerate(postos_display):
-                cfg_p = df_c[df_c['Posto'] == p_nome]
-                tem_flow = "Sim" in cfg_p['Flow Rack'].values
-                tem_andon = "Sim" in cfg_p['Andon'].values
-                wip = int(cfg_p['WIP (Estoque)'].values[0]) if not cfg_p.empty else 0
+            # Sub-colunas internas temporárias para colocar Legenda e EPI do lado da Carta de Trabalho
+            c_leg_epi, c_layout_desenho = st.columns([0.3, 0.7])
+            with c_leg_epi:
+                st.markdown("<div class='caixa-padrao' style='font-size:10px;'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#666;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> FlowRack</div>", unsafe_allow_html=True)
+                epis_html = "".join([f"<span class='epi-text'>{epi.split(' ')[0]}</span>" for epi in st.session_state.get('epis', [])])
+                st.markdown(f"<div class='caixa-padrao' style='text-align:center; font-size:10px;'><b>EPI'S:</b><br>{epis_html}</div>", unsafe_allow_html=True)
                 
-                idx_cor = (list(postos).index(p_nome) % 5) + 1
-                qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
-                bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
+            with c_layout_desenho:
+                postos = df_f['Posto'].unique()
+                html_layout = f"<div class='{'layout-u' if st.session_state.get('layout') == 'Célula em U' else 'layout-linha'}'>"
+                postos_display = list(postos)
+                if st.session_state.get('layout') == 'Célula em U' and len(postos_display) > 2:
+                    metade = (len(postos_display) + 1) // 2
+                    postos_display = postos_display[:metade] + list(reversed(postos_display[metade:]))
                 
-                html_posto = f"<div class='caixa-posto'>"
-                if tem_andon: html_posto += "<div class='andon'></div>"
-                if tem_flow: html_posto += "<div class='flow-rack'>FLOW RACK</div>"
-                html_posto += f"<b>{p_nome}</b><hr style='margin:5px 0;'>{bolinhas}<div class='operador'>👤</div>"
-                if wip > 0: html_posto += f"<div class='wip-badge'>{wip}</div>"
-                html_posto += "</div>"
-                html_layout += html_posto
-                
-            html_layout += "</div>"
-            st.markdown(html_layout, unsafe_allow_html=True)
+                for i, p_nome in enumerate(postos_display):
+                    cfg_p = df_c[df_c['Posto'] == p_nome]
+                    tem_flow = "Sim" in cfg_p['Flow Rack'].values
+                    tem_andon = "Sim" in cfg_p['Andon'].values
+                    wip = int(cfg_p['WIP (Estoque)'].values[0]) if not cfg_p.empty else 0
+                    
+                    idx_cor = (list(postos).index(p_nome) % 5) + 1
+                    qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
+                    bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
+                    
+                    html_posto = f"<div class='caixa-posto'>"
+                    if tem_andon: html_posto += "<div class='andon'></div>"
+                    if tem_flow: html_posto += "<div class='flow-rack'>FLOW RACK</div>"
+                    html_posto += f"<b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}<div class='operador'>👤</div>"
+                    if wip > 0: html_posto += f"<div class='wip-badge'>{wip}</div>"
+                    html_posto += "</div>"
+                    html_layout += html_posto
+                html_layout += "</div>"
+                st.markdown(html_layout, unsafe_allow_html=True)
 
+        # --- PARTE DE CIMA / LADO DIREITO: GBO + PIZZAS LOGO ABAIXO ---
+        with col_sup_dir:
+            st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
+            if not df_f.empty:
+                fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
+                fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
+                
+                totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
+                for posto, total in totais_gbo.items():
+                    fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=10)
+
+                fig_gbo.update_layout(height=200, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
+                fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
+                st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
+                
+                # PIZZAS PEQUENAS CENTRALIZADAS DIRETAMENTE ABAIXO DAS COLUNAS DO GBO
+                postos_gbo = sorted(df_f['Posto'].unique())
+                cols_pizza = st.columns(len(postos_gbo))
+                
+                for idx, p_nome in enumerate(postos_gbo):
+                    with cols_pizza[idx]:
+                        st.markdown(f"<div style='text-align:center; font-size:10px; font-weight:bold; color:#555;'>{p_nome}</div>", unsafe_allow_html=True)
+                        df_p_pizza = df_f[df_f['Posto'] == p_nome].groupby('Classificação')['Tempo (s)'].sum().reset_index()
+                        
+                        fig_p_pie = px.pie(df_p_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
+                        fig_p_pie.update_traces(textposition='inside', textinfo='percent')
+                        fig_p_pie.update_layout(height=80, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
+                        st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
+                
+                # LEGENDA DO AGREGA VALOR INSERIDA LOGO ABAIXO DOS GRÁFICOS DE PIZZA
+                st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 4px;'> "
+                            "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
+                            "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
+                            "<span class='icon-legenda' style='background:#ff9900; margin-left:10px;'></span> Não Agrega"
+                            "</div>", unsafe_allow_html=True)
+
+
+        # =====================================================================
+        # QUADRANTE INFERIOR (PARTE DE BAIXO)
+        # =====================================================================
+        st.write(" ") # Pequeno espaçador visual entre quadrantes
+        col_inf_esq, col_inf_dir = st.columns([1.1, 0.9])
+        
+        # --- PARTE DE BAIXO / LADO ESQUERDO: TABELA COMBINADA (YAMAZUMI) ---
+        with col_inf_esq:
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
                 fig_gantt = px.bar(df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto", 
@@ -261,63 +315,21 @@ with tab_dash:
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 
-                altura_grafico = max(220, len(df_f) * 23)
+                # Altura ideal adaptada para caber no quadrante sem empurrar a folha
+                altura_grafico = max(180, len(df_f) * 22)
                 fig_gantt.update_layout(
                     yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
                     xaxis={'title': 'Tempo (s)'},
                     showlegend=False, 
                     height=altura_grafico, 
-                    margin=dict(l=10, r=10, t=10, b=20)
+                    margin=dict(l=10, r=10, t=5, b=15)
                 )
                 fig_gantt.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
 
-        # --- DIREITA: GBO, PIZZAS ALINHADAS E CAPACIDADE ---
-        with col_dir:
-            st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
-            color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
-            
-            if not df_f.empty:
-                fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
-                fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
-                
-                # Soma total no topo de cada coluna do GBO
-                totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
-                for posto, total in totais_gbo.items():
-                    fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=12)
-
-                fig_gbo.update_layout(height=230, margin=dict(l=0, r=0, t=15, b=0), showlegend=False)
-                fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
-                st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
-                
-                # Legenda customizada para GBO
-                st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 5px; margin-bottom: 10px;'> "
-                            "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
-                            "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
-                            "<span class='icon-legenda' style='background:#ff9900; margin-left:10px;'></span> Não Agrega"
-                            "</div>", unsafe_allow_html=True)
-            
-            # --- PIZZAS PEQUENAS E CENTRALIZADAS LOGO ABAIXO DAS COLUNAS (SEM TÍTULO) ---
-            if not df_f.empty:
-                postos_gbo = sorted(df_f['Posto'].unique())
-                cols_pizza = st.columns(len(postos_gbo)) # Colunas combinando exatamente com o gráfico de cima
-                
-                for idx, p_nome in enumerate(postos_gbo):
-                    with cols_pizza[idx]:
-                        # Espaço em HTML centralizado para identificar o posto da pizza sutilmente
-                        st.markdown(f"<div style='text-align:center; font-size:10px; font-weight:bold; color:#555;'>{p_nome}</div>", unsafe_allow_html=True)
-                        df_p_pizza = df_f[df_f['Posto'] == p_nome].groupby('Classificação')['Tempo (s)'].sum().reset_index()
-                        
-                        fig_p_pie = px.pie(df_p_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
-                        fig_p_pie.update_traces(textposition='inside', textinfo='percent')
-                        fig_p_pie.update_layout(
-                            height=95, # Compacto e padronizado para manter tudo na folha
-                            margin=dict(l=2, r=2, t=2, b=2), 
-                            showlegend=False
-                        )
-                        st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
-
-            st.markdown("<div class='titulo-secao' style='margin-top: 15px;'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
+        # --- PARTE DE BAIXO / LADO DIREITO: QUADRO DE CAPACIDADE (COMPLETO) ---
+        with col_inf_dir:
+            st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
                 df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC'}, inplace=True)
@@ -330,4 +342,5 @@ with tab_dash:
                 df_cap['Capacidade (saturação) %'] = ((df_cap['TC (saturação)'] / takt) * 100).round(2).astype(str) + "%"
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
+                # Renderiza o Dataframe ocupando a largura total e destravado contra scrolls pelo CSS superior
                 st.dataframe(df_cap, use_container_width=True, hide_index=True)
