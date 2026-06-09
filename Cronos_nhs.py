@@ -28,8 +28,8 @@ st.markdown("""
     @media print {
         @page { size: A3 landscape; margin: 10mm; }
         
-        /* Esconde menus do Streamlit */
-        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"] { 
+        /* Esconde menus do Streamlit e o Título Principal (h1) */
+        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1 { 
             display: none !important; 
         }
         
@@ -113,7 +113,7 @@ with tab_cad:
     qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=3)
     takt_input = c3.number_input("Takt Time (s)", min_value=1.0, value=261.0)
     demanda_input = c4.number_input("Demanda Diária", min_value=1, value=116)
-    layout_tipo = c5.selectbox("Formato do Layout", ["Em Linha (Reta)", "Célula em U"])
+    layout_tipo = c5.selectbox("Formato do Layout", ["Em Linha", "Célula em U"])
     
     epis_selecionados = st.multiselect("EPIs Necessários", ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas", "🎧 Protetor", "🧢 Touca"], default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas"])
     
@@ -126,6 +126,7 @@ with tab_cad:
     
     with sub_tab_ativ:
         st.markdown("**Passo a Passo das Atividades:**")
+        st.info("💡 **Dica:** Para excluir uma linha, clique na pequena caixa vazia na ponta esquerda da linha e aperte a tecla 'Delete' ou 'Backspace' do seu teclado.")
         df_prod = df_tp[df_tp["Produto"] == prod].copy()
         if df_prod.empty: df_prod = pd.DataFrame(columns=["Posto", "Atividade", "Tempo (s)", "Classificação"])
         
@@ -236,13 +237,11 @@ with tab_dash:
 
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                # Modificado para mostrar textos nas barras e eixo y (atividades)
                 fig_gantt = px.bar(df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto", 
                                    orientation='h', text="Tempo (s)",
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 
-                # Ocultar legendas extras, mostrar eixo y, altura dinâmica para caber as atividades
                 altura_grafico = max(250, len(df_f) * 25)
                 fig_gantt.update_layout(
                     yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
@@ -257,33 +256,48 @@ with tab_dash:
         # --- DIREITA: GBO E CAPACIDADE ---
         with col_dir:
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
+            color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
+            
             if not df_f.empty:
-                color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
                 fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
-                fig_gbo.update_layout(height=240, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
+                
+                # --- Adicionando o Total no topo de cada coluna ---
+                totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
+                for posto, total in totais_gbo.items():
+                    fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=12)
+
+                fig_gbo.update_layout(height=240, margin=dict(l=0, r=0, t=15, b=0), showlegend=False)
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
-                # Legenda customizada para GBO sob o gráfico
+                # Legenda customizada para GBO
                 st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 10px;'>"
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
                             "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
                             "<span class='icon-legenda' style='background:#ff9900; margin-left:10px;'></span> Não Agrega"
                             "</div>", unsafe_allow_html=True)
             
-            st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
+            # --- NOVO: GRÁFICO DE PIZZA (PROPORÇÃO DE VALOR) ---
+            st.markdown("<div class='titulo-secao' style='margin-top: 20px;'>PROPORÇÃO DE VALOR</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                # Remodelagem completa do quadro para bater com o layout exigido
+                df_pizza = df_f.groupby('Classificação')['Tempo (s)'].sum().reset_index()
+                fig_pie = px.pie(df_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
+                fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+                fig_pie.update_layout(height=200, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
+                st.plotly_chart(fig_pie, use_container_width=True, key="pie_chart")
+
+            st.markdown("<div class='titulo-secao' style='margin-top: 20px;'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
+            if not df_f.empty:
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
-                df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC (cronometrado)'}, inplace=True)
+                # Renomeando as colunas conforme solicitado
+                df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC'}, inplace=True)
                 
-                df_cap['TC (saturação)'] = (df_cap['TC (cronometrado)'] * 1.10).round(0).astype(int)
+                df_cap['TC (saturação)'] = (df_cap['TC'] * 1.10).round(0).astype(int)
                 df_cap['TAKT'] = int(takt)
                 
-                # Evita divisão por zero
                 df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC (saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
-                df_cap['OPERADOR RES'] = 1
+                df_cap['OP.'] = 1  # De "OPERADOR RES" para "OP."
                 df_cap['Capacidade (saturação) %'] = ((df_cap['TC (saturação)'] / takt) * 100).round(2).astype(str) + "%"
                 df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
                 
