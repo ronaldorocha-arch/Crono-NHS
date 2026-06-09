@@ -17,7 +17,6 @@ def carregar_cfg_postos():
         return pd.DataFrame(columns=["Produto", "Posto", "Ponto de Uso", "Andon", "WIP", "Posição Operador"])
     
     df = pd.read_csv(FILE_POSTOS)
-    # Garante compatibilidade com versões anteriores
     if "Flow Rack" in df.columns:
         df.rename(columns={"Flow Rack": "Ponto de Uso"}, inplace=True)
     if "WIP (Estoque)" in df.columns:
@@ -28,19 +27,18 @@ def carregar_cfg_postos():
 
 st.set_page_config(page_title="CronoNHS 2.0 - A3", layout="wide")
 
-# --- CSS ESTRUTURAL E IMPRESSÃO ---
+# --- CSS ESTRUTURAL E IMPRESSÃO (MAXIMIZADO PARA FOLHA A3 INTEIRA) ---
 st.markdown("""
     <style>
     /* ---------------------------------------------------
-       IMPRESSÃO A3 - CORREÇÃO DE COLUNAS E ESCALA
+       IMPRESSÃO A3 - PREENCHIMENTO TOTAL DA FOLHA
     --------------------------------------------------- */
     @media print {
         @page { 
             size: A3 landscape; 
-            margin: 5mm !important; 
+            margin: 0 !important; /* Remove as margens de segurança do navegador */
         }
         
-        /* Esconde elementos indesejados na impressão */
         header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"] { 
             display: none !important; 
         }
@@ -60,16 +58,17 @@ st.markdown("""
         }
         
         .block-container {
-            zoom: 0.75 !important;
+            /* 🚨 AJUSTE O ZOOM AQUI SE PRECISAR DE MAIS OU MENOS ESPAÇO NA IMPRESSORA 🚨 */
+            zoom: 0.93 !important; 
+            padding: 10mm 15mm 10mm 15mm !important; /* Cria uma margem interna segura para não cortar o texto nas bordas físicas */
         }
         
-        /* Força colunas lado a lado na impressão */
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
-            gap: 15px !important;
+            gap: 20px !important; /* Espaçamento ligeiramente maior entre colunas */
         }
         
         [data-testid="column"] { 
@@ -79,7 +78,6 @@ st.markdown("""
             page-break-inside: avoid !important;
         }
         
-        /* Libera a tabela de capacidade */
         .stDataFrame, [data-testid="stDataFrame"], [data-testid="stGridVirtualizer"] {
             width: 100% !important;
             overflow: visible !important;
@@ -94,21 +92,20 @@ st.markdown("""
        ESTILOS VISUAIS DO DASHBOARD E POSTOS
     --------------------------------------------------- */
     body { font-family: 'Arial', sans-serif; }
-    .caixa-cabecalho { border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 13px; background-color: #f4f4f4;}
-    .titulo-secao { text-align: center; font-weight: bold; font-size: 14px; margin: 5px 0 8px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
+    .caixa-cabecalho { border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold; font-size: 14px; background-color: #f4f4f4;}
+    .titulo-secao { text-align: center; font-weight: bold; font-size: 15px; margin: 10px 0 10px 0; color: #000; text-transform: uppercase; border-bottom: 2px solid #000;}
     
-    .caixa-padrao { border: 1px solid #000; padding: 6px; margin-bottom: 5px; font-size: 11px; background: #fff;}
-    .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
-    .epi-text { font-size: 18px; text-align: center; margin: 0 4px; display: inline-block; }
+    .caixa-padrao { border: 1px solid #000; padding: 8px; margin-bottom: 5px; font-size: 12px; background: #fff;}
+    .icon-legenda { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
+    .epi-text { font-size: 20px; text-align: center; margin: 0 4px; display: inline-block; }
     
-    /* 🚨 FORÇA O GAP ZERO E CENTRALIZA A BANCADA 🚨 */
-    .layout-linha { display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; gap: 0px !important; padding: 45px 10px; }
-    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px !important; max-width: 800px; margin: 0 auto; padding: 45px 10px;}
+    /* ESPAÇAMENTO AUMENTADO PARA PREENCHER MAIS A TELA VERTICALMENTE */
+    .layout-linha { display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; gap: 0px !important; padding: 60px 10px; }
+    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px !important; max-width: 800px; margin: 0 auto; padding: 60px 10px;}
     
-    /* 🚨 CAIXA DO POSTO: IMPEDE O STREAMLIT DE SEPARÁ-LOS 🚨 */
     .caixa-posto { 
-        width: 200px !important; 
-        height: 100px !important; 
+        width: 220px !important; /* Ligeiramente mais largo */
+        height: 120px !important; /* Ligeiramente mais alto */
         border: 2px solid #333; 
         background-color: #fff; 
         position: relative; 
@@ -117,29 +114,25 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         margin: 0px !important; 
-        margin-right: -2px !important; /* Sobrepõe as bordas para fundir as mesas */
+        margin-right: -2px !important; 
         margin-bottom: -2px !important;
-        flex: none !important; /* Bloqueia o alongamento automático do Streamlit */
+        flex: none !important; 
         box-sizing: border-box !important;
     }
     
-    /* PONTO DE USO TRAVADO NO TOPO */
-    .ponto-uso { position: absolute; top: 0; left: -2px; right: -2px; height: 18px; background: #bbb; border-bottom: 1px solid #333; font-size: 10px; line-height: 18px; color: #000; font-weight: bold; z-index: 5; text-align: center;}
+    .ponto-uso { position: absolute; top: 0; left: -2px; right: -2px; height: 18px; background: #bbb; border-bottom: 1px solid #333; font-size: 11px; line-height: 18px; color: #000; font-weight: bold; z-index: 5; text-align: center;}
     
-    /* INDICADORES */
-    .andon { position: absolute; top: -12px; left: -12px; width: 22px; height: 22px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red; z-index: 10;}
-    /* WIP movido para a direita */
-    .wip-badge { position: absolute; bottom: -12px; right: -12px; width: 24px; height: 24px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; z-index: 10; border: 2px solid #fff;}
+    .andon { position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red; z-index: 10;}
+    .wip-badge { position: absolute; bottom: -12px; right: -12px; width: 26px; height: 26px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; z-index: 10; border: 2px solid #fff;}
     
-    .bolinha { display: inline-flex; height: 22px; width: 22px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 2px; font-size: 11px; z-index: 5;}
+    .bolinha { display: inline-flex; height: 24px; width: 24px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 3px; font-size: 12px; z-index: 5;}
     .b-1 { background-color: #00bcd4; } .b-2 { background-color: #4caf50; } .b-3 { background-color: #e040fb; } .b-4 { background-color: #ff9800; } .b-5 { background-color: #9c27b0; }
     
-    /* POSIÇÕES DO OPERADOR */
-    .operador-icon { position: absolute; font-size: 26px; z-index: 10; }
-    .op-frente { bottom: -38px; left: calc(50% - 13px); }
-    .op-tras { top: -38px; left: calc(50% - 13px); }
-    .op-esq { top: calc(50% - 13px); left: -38px; }
-    .op-dir { top: calc(50% - 13px); right: -38px; }
+    .operador-icon { position: absolute; font-size: 28px; z-index: 10; }
+    .op-frente { bottom: -40px; left: calc(50% - 14px); }
+    .op-tras { top: -40px; left: calc(50% - 14px); }
+    .op-esq { top: calc(50% - 14px); left: -40px; }
+    .op-dir { top: calc(50% - 14px); right: -40px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -216,7 +209,6 @@ with tab_cad:
         st.success("Guardado com sucesso!")
         st.rerun()
 
-
 # =====================================================================
 # --- ABA 2: DASHBOARD COMPLETO (QUADRANTE A3 EXEMPLAR) ---
 # =====================================================================
@@ -275,9 +267,9 @@ with tab_dash:
 
             c_leg_epi, c_layout_desenho = st.columns([0.3, 0.7])
             with c_leg_epi:
-                st.markdown("<div class='caixa-padrao' style='font-size:10px;'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#000;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> Ponto de Uso</div>", unsafe_allow_html=True)
+                st.markdown("<div class='caixa-padrao'><b>LEGENDA (Layout)</b><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon<br><span class='icon-legenda' style='background:#000;'></span> WIP<br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> Ponto de Uso</div>", unsafe_allow_html=True)
                 epis_html = "".join([f"<span class='epi-text'>{epi.split(' ')[0]}</span>" for epi in st.session_state.get('epis', [])])
-                st.markdown(f"<div class='caixa-padrao' style='text-align:center; font-size:10px;'><b>EPI'S:</b><br>{epis_html}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='caixa-padrao' style='text-align:center;'><b>EPI'S:</b><br>{epis_html}</div>", unsafe_allow_html=True)
                 
             with c_layout_desenho:
                 postos = df_f['Posto'].unique()
@@ -301,7 +293,7 @@ with tab_dash:
                     
                     html_posto = f"<div class='caixa-posto'>"
                     
-                    html_posto += f"<div style='margin-top: {'15px' if tem_flow else '0px'};'><b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}</div>"
+                    html_posto += f"<div style='margin-top: {'15px' if tem_flow else '0px'}; font-size:14px;'><b>{p_nome}</b><hr style='margin:4px 0;'>{bolinhas}</div>"
                     
                     if tem_andon: 
                         html_posto += f"<div class='andon'></div>"
@@ -330,7 +322,8 @@ with tab_dash:
                 for posto, total in totais_gbo.items():
                     fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=10)
 
-                fig_gbo.update_layout(height=180, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
+                # Altura do GBO aumentada de 180 para 250 para preencher melhor a folha
+                fig_gbo.update_layout(height=250, margin=dict(l=0, r=0, t=15, b=0), showlegend=False)
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
@@ -339,20 +332,20 @@ with tab_dash:
                 
                 for idx, p_nome in enumerate(postos_gbo):
                     with cols_pizza[idx]:
-                        st.markdown(f"<div style='text-align:center; font-size:10px; font-weight:bold; color:#555;'>{p_nome}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='text-align:center; font-size:12px; font-weight:bold; color:#555;'>{p_nome}</div>", unsafe_allow_html=True)
                         df_p_pizza = df_f[df_f['Posto'] == p_nome].groupby('Classificação')['Tempo (s)'].sum().reset_index()
                         
                         fig_p_pie = px.pie(df_p_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
                         fig_p_pie.update_traces(textposition='inside', textinfo='percent')
-                        fig_p_pie.update_layout(height=80, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
+                        # Altura das pizzas aumentada de 80 para 120
+                        fig_p_pie.update_layout(height=120, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
                         st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
                 
-                st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 4px;'> "
+                st.markdown("<div style='text-align:center; font-size: 13px; margin-top: 10px;'> "
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
-                            "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
-                            "<span class='icon-legenda' style='background:#ff9900; margin-left:10px;'></span> Não Agrega"
+                            "<span class='icon-legenda' style='background:#ffff00; margin-left:15px;'></span> Semi Agrega "
+                            "<span class='icon-legenda' style='background:#ff9900; margin-left:15px;'></span> Não Agrega"
                             "</div>", unsafe_allow_html=True)
-
 
         # =====================================================================
         # QUADRANTE INFERIOR
@@ -368,13 +361,14 @@ with tab_dash:
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 
-                altura_grafico = max(180, len(df_f) * 22)
+                # Altura do Yamazumi aumentada para esticar até ao fim da folha
+                altura_grafico = max(260, len(df_f) * 26)
                 fig_gantt.update_layout(
                     yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
                     xaxis={'title': 'Tempo (s)'},
                     showlegend=False, 
                     height=altura_grafico, 
-                    margin=dict(l=10, r=10, t=5, b=15)
+                    margin=dict(l=10, r=10, t=10, b=15)
                 )
                 fig_gantt.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
