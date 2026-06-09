@@ -35,7 +35,6 @@ st.markdown("""
        IMPRESSÃO - REGRAS GERAIS PARA QUALQUER FOLHA
     --------------------------------------------------- */
     @media print {
-        /* Esconde elementos indesejados na impressão (incluindo os seletores novos) */
         header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"], [data-testid="stRadio"] { 
             display: none !important; 
         }
@@ -54,7 +53,6 @@ st.markdown("""
             overflow: visible !important;
         }
         
-        /* Força colunas lado a lado na impressão */
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -70,7 +68,7 @@ st.markdown("""
             page-break-inside: avoid !important;
         }
         
-        /* Libera a tabela de capacidade */
+        /* Libera as tabelas para não criarem barra de rolagem ao imprimir */
         .stDataFrame, [data-testid="stDataFrame"], [data-testid="stGridVirtualizer"] {
             width: 100% !important;
             overflow: visible !important;
@@ -92,11 +90,16 @@ st.markdown("""
     .icon-legenda { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 20px; text-align: center; margin: 0 4px; display: inline-block; }
     
+    /* TABELA DE CAPACIDADE CUSTOMIZADA (Evita cortes e centraliza tudo) */
+    .tabela-cap { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 5px; }
+    .tabela-cap th { background-color: #f4f4f4; border: 1px solid #999; padding: 6px; text-align: center !important; font-weight: bold; color: #000;}
+    .tabela-cap td { border: 1px solid #999; padding: 6px; text-align: center !important; color: #333;}
+    
     /* FORÇA O GAP ZERO E CENTRALIZA A BANCADA */
     .layout-linha { display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; gap: 0px !important; padding: 60px 10px; }
     .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px !important; max-width: 800px; margin: 0 auto; padding: 60px 10px;}
     
-    /* CAIXA DO POSTO: IMPEDE O STREAMLIT DE SEPARÁ-LOS */
+    /* CAIXA DO POSTO */
     .caixa-posto { 
         width: 220px !important; 
         height: 120px !important; 
@@ -108,24 +111,20 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         margin: 0px !important; 
-        margin-right: -2px !important; /* Sobrepõe as bordas para fundir as mesas */
+        margin-right: -2px !important; 
         margin-bottom: -2px !important;
         flex: none !important; 
         box-sizing: border-box !important;
     }
     
-    /* PONTO DE USO TRAVADO NO TOPO */
     .ponto-uso { position: absolute; top: 0; left: -2px; right: -2px; height: 18px; background: #bbb; border-bottom: 1px solid #333; font-size: 11px; line-height: 18px; color: #000; font-weight: bold; z-index: 5; text-align: center;}
     
-    /* INDICADORES */
     .andon { position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red; z-index: 10;}
-    /* WIP movido para a direita */
     .wip-badge { position: absolute; bottom: -12px; right: -12px; width: 26px; height: 26px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; z-index: 10; border: 2px solid #fff;}
     
     .bolinha { display: inline-flex; height: 24px; width: 24px; border-radius: 50%; align-items: center; justify-content: center; color: #000; font-weight: bold; margin: 3px; font-size: 12px; z-index: 5;}
     .b-1 { background-color: #00bcd4; } .b-2 { background-color: #4caf50; } .b-3 { background-color: #e040fb; } .b-4 { background-color: #ff9800; } .b-5 { background-color: #9c27b0; }
     
-    /* POSIÇÕES DO OPERADOR */
     .operador-icon { position: absolute; font-size: 28px; z-index: 10; }
     .op-frente { bottom: -40px; left: calc(50% - 14px); }
     .op-tras { top: -40px; left: calc(50% - 14px); }
@@ -219,7 +218,6 @@ with tab_dash:
         col_print2.markdown("<br><span style='font-size: 12px; color: #555;'>Selecione o tamanho antes de pressionar Ctrl+P. O sistema ajustará o zoom automaticamente para a folha escolhida.</span>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # Injeta o CSS dinâmico com o tamanho da página e o zoom correto para a folha selecionada
         if tam_folha == "A4":
             st.markdown("""
                 <style>
@@ -239,7 +237,6 @@ with tab_dash:
                 </style>
             """, unsafe_allow_html=True)
 
-
         p_sel = st.selectbox("Visualizar Célula:", df_tp['Produto'].unique())
         df_f = df_tp[df_tp['Produto'] == p_sel].sort_values(by=["Posto"]).copy()
         df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
@@ -253,7 +250,6 @@ with tab_dash:
         else:
             tc_total, tc_max = 0, 0
             
-        # CABEÇALHO SUPERIOR UNIFICADO
         st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
@@ -402,12 +398,18 @@ with tab_dash:
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
                 df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC'}, inplace=True)
                 
-                df_cap['TC (saturação)'] = (df_cap['TC'] * 1.10).round(0).astype(int)
+                # Nomes encurtados para caber perfeitamente sem cortes
+                df_cap['TC Sat.'] = (df_cap['TC'] * 1.10).round(0).astype(int)
                 df_cap['TAKT'] = int(takt)
-                
-                df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC (saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
+                df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC Sat.']).apply(lambda x: round(x, 1) if x > 0 else 0)
                 df_cap['OP.'] = 1  
-                df_cap['Capacidade (saturação) %'] = ((df_cap['TC (saturação)'] / takt) * 100).round(2).astype(str) + "%"
-                df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
+                df_cap['Cap. Sat. (%)'] = ((df_cap['TC Sat.'] / takt) * 100).round(2).astype(str) + "%"
+                df_cap['Demanda'] = int(demanda)
                 
-                st.dataframe(df_cap, use_container_width=True, hide_index=True)
+                # Reordenar colunas
+                colunas_mostrar = ['OPERAÇÃO', 'TC', 'TC Sat.', 'TAKT', 'CAP. DIÁRIA', 'OP.', 'Cap. Sat. (%)', 'Demanda']
+                df_cap_display = df_cap[colunas_mostrar]
+                
+                # Gera uma Tabela HTML estática (nunca é cortada na impressão e permite CSS livre)
+                tabela_html = df_cap_display.to_html(index=False, classes="tabela-cap", escape=False)
+                st.markdown(tabela_html, unsafe_allow_html=True)
