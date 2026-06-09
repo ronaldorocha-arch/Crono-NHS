@@ -157,16 +157,25 @@ with tab_cad:
     
     with sub_tab_ativ:
         st.markdown("**Passo a Passo das Atividades:**")
+        
         df_prod = df_tp[df_tp["Produto"] == prod].copy()
-        if df_prod.empty: df_prod = pd.DataFrame(columns=["Posto", "Atividade", "Tempo (s)", "Classificação"])
+        
+        if df_prod.empty: 
+            df_prod = pd.DataFrame(columns=["Produto", "Posto", "Atividade", "Tempo (s)", "Classificação"])
+        
+        st.info("💡 Dica: Dê um **clique duplo** em uma célula para editar. Para adicionar uma nova etapa, clique na última linha vazia da tabela.")
         
         edited_df = st.data_editor(
-            df_prod, num_rows="dynamic", use_container_width=True,
+            df_prod, 
+            num_rows="dynamic", 
+            use_container_width=True,
+            hide_index=True,
+            column_order=["Posto", "Atividade", "Tempo (s)", "Classificação"], 
             column_config={
-                "Posto": st.column_config.SelectboxColumn("Posto", options=lista_postos),
-                "Atividade": st.column_config.TextColumn("Descrição"),
-                "Tempo (s)": st.column_config.NumberColumn("Tempo (s)", format="%.1f"),
-                "Classificação": st.column_config.SelectboxColumn("Agregação de Valor", options=["Agrega", "Semi Agrega", "Não Agrega"])
+                "Posto": st.column_config.SelectboxColumn("Posto", options=lista_postos, required=True),
+                "Atividade": st.column_config.TextColumn("Descrição", required=True),
+                "Tempo (s)": st.column_config.NumberColumn("Tempo (s)", format="%.1f", required=True),
+                "Classificação": st.column_config.SelectboxColumn("Agregação de Valor", options=["Agrega", "Semi Agrega", "Não Agrega"], required=True)
             }
         )
         
@@ -252,7 +261,6 @@ with tab_dash:
         col_sup_esq, col_sup_dir = st.columns([1.1, 0.9])
         
         with col_sup_esq:
-            # 🚨 REMOVIDO O "(EM LINHA)" DESTE TÍTULO 🚨
             st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO</div>", unsafe_allow_html=True)
             
             postos_disp = list(df_f['Posto'].unique())
