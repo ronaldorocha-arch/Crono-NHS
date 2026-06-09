@@ -72,7 +72,7 @@ st.markdown("""
     /* Legendas e Caixas */
     .caixa-padrao { border: 1px solid #000; padding: 8px; margin-bottom: 10px; font-size: 11px; background: #fff;}
     .icon-legenda { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
-    .epi-text { font-size: 22px; text-align: center; margin: 3px; display: inline-block; }
+    .epi-text { font-size: 20px; text-align: center; margin: 0 5px; display: inline-block; }
     
     /* Carta de Trabalho UI */
     .layout-linha { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 10px; }
@@ -108,15 +108,16 @@ with tab_cad:
     depto = col_info2.text_input("Departamento:", value=st.session_state.get('depto', "Melhoria Contínua"))
     
     st.write("---")
-    c1, c2, c3, c4 = st.columns([2, 1, 1, 1.5])
+    c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1.5])
     prod = c1.text_input("Produto / Família", value="UPS - 02")
     qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=3)
     takt_input = c3.number_input("Takt Time (s)", min_value=1.0, value=261.0)
-    layout_tipo = c4.selectbox("Formato do Layout", ["Em Linha (Reta)", "Célula em U"])
+    demanda_input = c4.number_input("Demanda Diária", min_value=1, value=116)
+    layout_tipo = c5.selectbox("Formato do Layout", ["Em Linha (Reta)", "Célula em U"])
     
     epis_selecionados = st.multiselect("EPIs Necessários", ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas", "🎧 Protetor", "🧢 Touca"], default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas"])
     
-    st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'epis': epis_selecionados, 'layout': layout_tipo})
+    st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'demanda': demanda_input, 'epis': epis_selecionados, 'layout': layout_tipo})
 
     st.write("---")
     sub_tab_ativ, sub_tab_postos = st.tabs(["⏱️ Tempos e Atividades", "🏭 Configuração Física (Flow Rack, Andon, WIP)"])
@@ -171,6 +172,7 @@ with tab_dash:
         df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
         
         takt = st.session_state.get('takt', 261.0)
+        demanda = st.session_state.get('demanda', 116)
         
         if not df_f.empty:
             df_f['Início (s)'] = df_f.groupby('Posto')['Tempo (s)'].cumsum() - df_f['Tempo (s)']
@@ -183,19 +185,19 @@ with tab_dash:
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
         with cc2: st.markdown(f"<div class='caixa-cabecalho'>Depto: {st.session_state.get('depto')}</div>", unsafe_allow_html=True)
-        with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s</div>", unsafe_allow_html=True)
+        with cc3: st.markdown(f"<div class='caixa-cabecalho'>TC Total: {tc_total}s | Gargalo: {tc_max}s | Demanda: {demanda} unid</div>", unsafe_allow_html=True)
         st.write("")
         
-        # GRID DO A3 (Ajustado levemente para balancear melhor a tela)
+        # GRID DO A3
         col_esq, col_meio, col_dir = st.columns([0.8, 2.0, 1.4])
         
         # --- ESQUERDA ---
         with col_esq:
             st.markdown("<div class='caixa-padrao'><b>LEGENDA (Layout)</b><br><br><span class='icon-legenda' style='background:red; border:1px solid yellow;'></span> Andon (Sinalização)<br><br><span class='icon-legenda' style='background:#666;'></span> Estoque Intermediário<br><br><span class='icon-legenda' style='border:1px solid #000; background:#bbb; border-radius:0;'></span> Flow Rack (Ponto de Uso)</div>", unsafe_allow_html=True)
-            st.markdown("<div class='caixa-padrao'><b>LEGENDA (Valor)</b><br><br><span class='icon-legenda' style='background:#00ff00;'></span> Agrega Valor<br><br><span class='icon-legenda' style='background:#ffff00;'></span> Semi Agrega<br><br><span class='icon-legenda' style='background:#ff9900;'></span> Não Agrega</div>", unsafe_allow_html=True)
-            st.markdown("<div class='caixa-padrao' style='text-align:center;'><b>EPI'S EXIGIDOS</b><br>", unsafe_allow_html=True)
-            for epi in st.session_state.get('epis', []): st.markdown(f"<span class='epi-text'>{epi.split(' ')[0]}</span>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+            
+            # EPIs agora em linha (inline) para ocupar menos espaço
+            epis_html = "".join([f"<span class='epi-text'>{epi.split(' ')[0]}</span>" for epi in st.session_state.get('epis', [])])
+            st.markdown(f"<div class='caixa-padrao' style='text-align:center;'><b>EPI'S EXIGIDOS:</b><br>{epis_html}</div>", unsafe_allow_html=True)
 
         # --- MEIO: CARTA DE TRABALHO E GANTT ---
         with col_meio:
@@ -234,9 +236,22 @@ with tab_dash:
 
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                fig_gantt = px.bar(df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto", orientation='h', color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
+                # Modificado para mostrar textos nas barras e eixo y (atividades)
+                fig_gantt = px.bar(df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto", 
+                                   orientation='h', text="Tempo (s)",
+                                   color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
-                fig_gantt.update_layout(yaxis={'autorange': 'reversed', 'visible': False}, showlegend=False, height=220, margin=dict(l=0, r=0, t=0, b=0))
+                
+                # Ocultar legendas extras, mostrar eixo y, altura dinâmica para caber as atividades
+                altura_grafico = max(250, len(df_f) * 25)
+                fig_gantt.update_layout(
+                    yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
+                    xaxis={'title': 'Tempo (s)'},
+                    showlegend=False, 
+                    height=altura_grafico, 
+                    margin=dict(l=10, r=10, t=10, b=20)
+                )
+                fig_gantt.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gantt, use_container_width=True, key="gantt_chart")
 
         # --- DIREITA: GBO E CAPACIDADE ---
@@ -247,12 +262,29 @@ with tab_dash:
                 fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Classificação", color_discrete_map=color_map, text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
                 fig_gbo.update_layout(height=240, margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
+                fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
+                
+                # Legenda customizada para GBO sob o gráfico
+                st.markdown("<div style='text-align:center; font-size: 11px; margin-top: 10px;'>"
+                            "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
+                            "<span class='icon-legenda' style='background:#ffff00; margin-left:10px;'></span> Semi Agrega "
+                            "<span class='icon-legenda' style='background:#ff9900; margin-left:10px;'></span> Não Agrega"
+                            "</div>", unsafe_allow_html=True)
             
             st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
+                # Remodelagem completa do quadro para bater com o layout exigido
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
-                df_cap['TC(sat)'] = (df_cap['Tempo (s)'] * 1.10).round(0)
-                df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC(sat)']).apply(lambda x: int(x) if x > 0 else 0)
-                df_cap['Cap.(%)'] = ((df_cap['TC(sat)'] / takt) * 100).round(1).astype(str) + "%"
-                st.dataframe(df_cap[["Posto", "TC(sat)", "CAP. DIÁRIA", "Cap.(%)"]], use_container_width=True, hide_index=True)
+                df_cap.rename(columns={'Posto': 'OPERAÇÃO', 'Tempo (s)': 'TC (cronometrado)'}, inplace=True)
+                
+                df_cap['TC (saturação)'] = (df_cap['TC (cronometrado)'] * 1.10).round(0).astype(int)
+                df_cap['TAKT'] = int(takt)
+                
+                # Evita divisão por zero
+                df_cap['CAP. DIÁRIA'] = (28800 / df_cap['TC (saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
+                df_cap['OPERADOR RES'] = 1
+                df_cap['Capacidade (saturação) %'] = ((df_cap['TC (saturação)'] / takt) * 100).round(2).astype(str) + "%"
+                df_cap['TAKT objetivo (pçs/dia)'] = int(demanda)
+                
+                st.dataframe(df_cap, use_container_width=True, hide_index=True)
