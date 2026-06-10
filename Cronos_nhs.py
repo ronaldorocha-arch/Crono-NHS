@@ -135,7 +135,7 @@ st.markdown("""
 df_tp = carregar_tp()
 df_cfg = carregar_cfg_postos()
 
-st.title("📋 CronoNHS 2.0 - Engenharia de Processos")
+st.title("📋 Trabalho Padronizado NHS 2.0 - Tecnologia de Processos")
 
 tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashboard A3/A4 (Ctrl+P para PDF)"])
 
