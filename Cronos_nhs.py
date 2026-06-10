@@ -34,10 +34,11 @@ def carregar_cfg_postos():
 
 st.set_page_config(page_title="Trabalho Padronizado - Tecnologia de Processos", layout="wide")
 
-# --- CSS ESTRUTURAL E IMPRESSÃO (CORREÇÃO DEFINITIVA DE CORTE LATERAL) ---
+# --- CSS ESTRUTURAL E IMPRESSÃO ORGANIZADO ---
 st.markdown("""
     <style>
     @media print {
+        /* Oculta elementos do sistema na impressão */
         header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"], [data-testid="stRadio"], .stExpander { 
             display: none !important; 
         }
@@ -45,43 +46,34 @@ st.markdown("""
         * { 
             -webkit-print-color-adjust: exact !important; 
             color-adjust: exact !important; 
-            box-sizing: border-box !important; 
+            box-sizing: border-box !important;
         }
         
-        html, body, .stApp, .main { 
+        html, body, .stApp { 
             width: 100% !important; 
             max-width: 100% !important; 
             background-color: white !important; 
             margin: 0 !important; 
             padding: 0 !important;
-            overflow: hidden !important;
         }
         
-        /* 🚨 TRAVA DE SEGURANÇA: Limita a 92% da largura da tela para criar uma margem direita forçada 🚨 */
         .block-container { 
-            width: 92vw !important; 
-            max-width: 92vw !important; 
-            margin: 0 !important; 
-            padding: 0 !important;
-            padding-right: 2vw !important; 
+            width: 100% !important; 
+            max-width: 100% !important; 
+            padding: 10mm 15mm !important; /* Margens físicas seguras de papel */
+            margin: 0 auto !important; 
         }
         
-        /* Força as colunas a terem exatamente 48% do espaço com 4% de respiro no meio */
+        /* Preserva os blocos horizontais nativos sem forçar larguras quebradas */
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
-            justify-content: space-between !important;
-            gap: 4% !important; 
         }
         
         [data-testid="column"] { 
-            width: 48% !important;
-            flex: 0 0 48% !important; 
             min-width: 0 !important; 
-            padding: 0 !important;
-            margin: 0 !important;
             page-break-inside: avoid !important;
         }
         
@@ -288,12 +280,13 @@ with tab_dash:
         st.markdown("<div class='no-print' style='background:#eef7ff; padding:15px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'><b style='color:#0056b3; font-size: 15px;'>🖨️ Tamanho da Impressão (Ctrl+P)</b><br><span style='font-size: 13px; color: #555;'>Selecione a folha abaixo antes de imprimir. O sistema ajustará o zoom automaticamente para evitar cortes.</span></div>", unsafe_allow_html=True)
         tam_folha = st.radio("Selecione o tamanho:", ["A3", "A4"], horizontal=True, label_visibility="collapsed")
 
+        # UNIFICAÇÃO DA REGRA DE IMPRESSÃO: Deixamos o layout natural agir e escalamos apenas com o zoom ideal
         if tam_folha == "A4":
             st.markdown("""
                 <style>
                 @media print {
-                    @page { size: A4 landscape; margin: 5mm !important; }
-                    .block-container { zoom: 0.60 !important; }
+                    @page { size: A4 landscape; margin: 0 !important; }
+                    body { zoom: 0.72 !important; }
                 }
                 </style>
             """, unsafe_allow_html=True)
@@ -301,8 +294,8 @@ with tab_dash:
             st.markdown("""
                 <style>
                 @media print {
-                    @page { size: A3 landscape; margin: 5mm !important; }
-                    .block-container { zoom: 0.90 !important; }
+                    @page { size: A3 landscape; margin: 0 !important; }
+                    body { zoom: 0.98 !important; }
                 }
                 </style>
             """, unsafe_allow_html=True)
@@ -331,7 +324,7 @@ with tab_dash:
         else:
             tc_total, tc_max = 0, 0
             
-        st.markdown(f"<div class='caixa-cabecalho' style='font-size:16px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='caixa-cabecalho' style='font-size:18px;'>TRABALHO PADRONIZADO - CÉLULA {p_sel}</div>", unsafe_allow_html=True)
         cc1, cc2, cc3 = st.columns(3)
         with cc1: st.markdown(f"<div class='caixa-cabecalho'>Elaborado por: {st.session_state.get('elaborador')}</div>", unsafe_allow_html=True)
         with cc2: st.markdown(f"<div class='caixa-cabecalho'>Depto: {st.session_state.get('depto')}</div>", unsafe_allow_html=True)
@@ -340,6 +333,7 @@ with tab_dash:
         
         color_map = {"Agrega": "#00ff00", "Semi Agrega": "#ffff00", "Não Agrega": "#ff9900"}
 
+        # Uso das colunas padrão do Streamlit (deixando o alinhamento 50/50 flexível agir livremente)
         col_sup_esq, col_sup_dir = st.columns([1, 1])
         
         with col_sup_esq:
