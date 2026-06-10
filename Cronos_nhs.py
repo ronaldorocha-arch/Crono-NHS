@@ -2,15 +2,22 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import re
 
 # --- 1. CONFIGURAÇÃO DE FICHEIROS/DADOS ---
 FILE_TP = "trabalho_padronizado_dados.csv"
 FILE_POSTOS = "config_postos.csv"
 
+def extrair_numero_posto(nome):
+    match = re.search(r'\d+', str(nome))
+    return int(match.group()) if match else 999
+
 def carregar_tp():
     if not os.path.exists(FILE_TP):
         return pd.DataFrame(columns=["Produto", "Posto", "Atividade", "Tempo (s)", "Classificação"])
-    return pd.read_csv(FILE_TP)
+    df = pd.read_csv(FILE_TP)
+    df['Tempo (s)'] = pd.to_numeric(df['Tempo (s)'], errors='coerce').fillna(0.0)
+    return df
 
 def carregar_cfg_postos():
     if not os.path.exists(FILE_POSTOS):
@@ -49,13 +56,12 @@ st.markdown("""
             overflow: visible !important;
         }
         
-        /* Ajuste do grid para evitar espaços em branco */
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
-            gap: 15px !important; 
+            gap: 10px !important; 
             justify-content: space-between !important;
         }
         
@@ -66,7 +72,6 @@ st.markdown("""
             page-break-inside: avoid !important;
         }
         
-        /* Gráficos Plotly em tela cheia na sua div */
         .js-plotly-plot, .plot-container {
             width: 100% !important;
         }
@@ -89,17 +94,15 @@ st.markdown("""
     .icon-legenda { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 5px; vertical-align: middle;}
     .epi-text { font-size: 24px; text-align: center; margin: 0 5px; display: inline-block; }
     
-    /* TABELA DE CAPACIDADE CUSTOMIZADA */
     .tabela-cap { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 5px; }
     .tabela-cap th { background-color: #f4f4f4; border: 1px solid #999; padding: 8px; text-align: center !important; vertical-align: middle !important; font-weight: bold; color: #000; line-height: 1.2;}
     .tabela-cap td { border: 1px solid #999; padding: 8px; text-align: center !important; vertical-align: middle !important; color: #333;}
     
-    /* CARTA DE TRABALHO - LAYOUT ESTICADO */
-    .layout-linha { display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap; gap: 0px !important; padding: 60px 0px; width: 100%;}
-    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px !important; width: 100%; margin: 0 auto; padding: 60px 0px;}
+    .layout-linha { display: flex; justify-content: flex-start; align-items: center; flex-wrap: nowrap; gap: 0px; padding: 60px 0px; width: 100%; overflow-x: auto;}
+    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px; width: 100%; margin: 0 auto; padding: 60px 0px;}
     
     .caixa-posto { 
-        min-width: 150px; 
+        min-width: 125px; 
         flex: 1; 
         height: 140px !important; 
         border: 2px solid #333; 
@@ -110,13 +113,10 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         margin: 0px !important; 
-        margin-right: -2px !important; 
-        margin-bottom: -2px !important;
         box-sizing: border-box !important;
     }
     
-    .ponto-uso { position: absolute; top: 0; left: -2px; right: -2px; height: 18px; background: #bbb; border-bottom: 1px solid #333; font-size: 12px; line-height: 18px; color: #000; font-weight: bold; z-index: 5; text-align: center;}
-    
+    .ponto-uso { position: absolute; top: 0; left: -2px; right: -2px; height: 18px; background: #bbb; border-bottom: 1px solid #333; font-size: 11px; line-height: 18px; color: #000; font-weight: bold; z-index: 5; text-align: center;}
     .andon { position: absolute; top: -12px; left: -12px; width: 24px; height: 24px; background-color: red; border-radius: 50%; border: 2px solid yellow; box-shadow: 0 0 5px red; z-index: 10;}
     .wip-badge { position: absolute; bottom: -12px; right: -12px; width: 28px; height: 28px; background-color: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; z-index: 10; border: 2px solid #fff;}
     
@@ -128,6 +128,8 @@ st.markdown("""
     .op-tras { top: -45px; left: calc(50% - 16px); }
     .op-esq { top: calc(50% - 16px); left: -45px; }
     .op-dir { top: calc(50% - 16px); right: -45px; }
+    
+    .seta-fluxo { font-size: 26px; color: #000; font-weight: bold; margin: 0 5px; flex-shrink: 0; display: flex; align-items: center; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -147,16 +149,17 @@ with tab_cad:
     depto = col_info2.text_input("Departamento:", value=st.session_state.get('depto', "Melhoria Contínua"))
     
     st.write("---")
-    c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1.5])
+    c1, c2, c3, c4, c5, c6 = st.columns([1.5, 1, 1, 1, 1, 1.5])
     prod = c1.text_input("Produto / Família", value="UPS - 02")
-    qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=3)
+    qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=4)
     takt_input = c3.number_input("Takt Time (s)", min_value=1.0, value=261.0)
     demanda_input = c4.number_input("Demanda Diária", min_value=1, value=116)
-    layout_tipo = c5.selectbox("Formato do Layout", ["Em Linha", "Célula em U"])
+    tempo_disp_input = c5.number_input("Tempo Disp. (s)", min_value=1, value=30312)
+    layout_tipo = c6.selectbox("Formato do Layout", ["Em Linha", "Célula em U"])
     
     epis_selecionados = st.multiselect("EPIs Necessários", ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas", "🎧 Protetor", "🧢 Touca"], default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas"])
     
-    st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'demanda': demanda_input, 'epis': epis_selecionados, 'layout': layout_tipo})
+    st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'demanda': demanda_input, 'tempo_disp': tempo_disp_input, 'epis': epis_selecionados, 'layout': layout_tipo})
 
     st.write("---")
     sub_tab_ativ, sub_tab_postos = st.tabs(["⏱️ Tempos e Atividades", "🏭 Configuração Física (Ponto Uso, Andon, WIP, Operador)"])
@@ -172,12 +175,15 @@ with tab_cad:
             df_prod = pd.DataFrame({
                 "Produto": [prod] * int(qtd_postos),
                 "Posto": lista_postos,
-                "Atividade": [None] * int(qtd_postos),
-                "Tempo (s)": [None] * int(qtd_postos),
-                "Classificação": [None] * int(qtd_postos)
+                "Atividade": [""] * int(qtd_postos),
+                "Tempo (s)": [0.0] * int(qtd_postos),
+                "Classificação": ["Agrega"] * int(qtd_postos)
             })
+            
+        df_prod['num_posto'] = df_prod['Posto'].apply(extrair_numero_posto)
+        df_prod = df_prod.sort_values('num_posto').drop(columns=['num_posto']).reset_index(drop=True)
         
-        st.info("💡 Dica: Dê um **clique duplo** para editar. Para adicionar MAIS etapas em um mesmo posto, basta clicar na última linha vazia (None) e escolher o posto.")
+        st.info("💡 Dica: Adicione atividades no final da tabela. Elas se **agruparão automaticamente com o seu posto correto** quando você salvar.")
         
         edited_df = st.data_editor(
             df_prod, 
@@ -196,8 +202,15 @@ with tab_cad:
     with sub_tab_postos:
         st.markdown("**Mapeamento do Layout da Linha:**")
         df_cfg_prod = df_cfg[df_cfg["Produto"] == prod].copy()
-        if df_cfg_prod.empty:
-            df_cfg_prod = pd.DataFrame({"Posto": lista_postos, "Ponto de Uso": ["Não"]*len(lista_postos), "Andon": ["Não"]*len(lista_postos), "WIP": [0]*len(lista_postos), "Posição Operador": ["Frente"]*len(lista_postos)})
+        
+        if df_cfg_prod.empty or len(df_cfg_prod) != len(lista_postos):
+            df_cfg_prod = pd.DataFrame({
+                "Posto": lista_postos, 
+                "Ponto de Uso": ["Não"]*len(lista_postos), 
+                "Andon": ["Não"]*len(lista_postos), 
+                "WIP": [0]*len(lista_postos), 
+                "Posição Operador": ["Frente"]*len(lista_postos)
+            })
         
         edited_cfg = st.data_editor(
             df_cfg_prod, hide_index=True, use_container_width=True,
@@ -212,17 +225,27 @@ with tab_cad:
         
     if st.button("💾 SALVAR PRODUTO E CONFIGURAÇÕES", type="primary", use_container_width=True):
         edited_df["Produto"] = prod
+        edited_df['num_posto'] = edited_df['Posto'].apply(extrair_numero_posto)
+        edited_df = edited_df.sort_values('num_posto').drop(columns=['num_posto'])
+        
         pd.concat([df_tp[df_tp["Produto"] != prod], edited_df], ignore_index=True).to_csv(FILE_TP, index=False)
         
         edited_cfg["Produto"] = prod
         pd.concat([df_cfg[df_cfg["Produto"] != prod], edited_cfg], ignore_index=True).to_csv(FILE_POSTOS, index=False)
-        st.success("Guardado com sucesso!")
+        
+        # Salva o produto ativo na sessão para forçar o Dashboard a abrir nele
+        st.session_state['produto_ativo'] = prod 
+        st.success("Guardado com sucesso e postos agrupados!")
         st.rerun()
 
 # =====================================================================
 # --- ABA 2: DASHBOARD COMPLETO (QUADRANTE A3/A4) ---
 # =====================================================================
 with tab_dash:
+    # Recarrega direto do arquivo para garantir que a aba tenha os dados 100% frescos
+    df_tp = carregar_tp()
+    df_cfg = carregar_cfg_postos()
+    
     if not df_tp.empty:
         st.markdown("<div class='no-print' style='background:#eef7ff; padding:15px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'><b style='color:#0056b3; font-size: 15px;'>🖨️ Tamanho da Impressão (Ctrl+P)</b><br><span style='font-size: 13px; color: #555;'>Selecione a folha abaixo antes de imprimir. O sistema ajustará o zoom automaticamente para evitar cortes.</span></div>", unsafe_allow_html=True)
         tam_folha = st.radio("Selecione o tamanho:", ["A3", "A4"], horizontal=True, label_visibility="collapsed")
@@ -231,8 +254,8 @@ with tab_dash:
             st.markdown("""
                 <style>
                 @media print {
-                    @page { size: A4 landscape; margin: 0 !important; }
-                    .block-container { zoom: 0.70 !important; padding: 10mm 15mm 10mm 15mm !important; }
+                    @page { size: A4 landscape; margin: 5mm !important; }
+                    .block-container { zoom: 0.52 !important; padding: 5mm !important; }
                 }
                 </style>
             """, unsafe_allow_html=True)
@@ -246,12 +269,19 @@ with tab_dash:
                 </style>
             """, unsafe_allow_html=True)
 
-        p_sel = st.selectbox("Visualizar Célula:", df_tp['Produto'].unique())
+        lista_produtos = list(df_tp['Produto'].unique())
+        # Tenta pegar o index do produto recém salvo para forçar a visualização atualizada
+        idx_selecionado = 0
+        if st.session_state.get('produto_ativo') in lista_produtos:
+            idx_selecionado = lista_produtos.index(st.session_state['produto_ativo'])
+
+        p_sel = st.selectbox("Visualizar Célula:", lista_produtos, index=idx_selecionado)
         df_f = df_tp[df_tp['Produto'] == p_sel].sort_values(by=["Posto"]).copy()
         df_c = df_cfg[df_cfg['Produto'] == p_sel].copy()
         
         takt = st.session_state.get('takt', 261.0)
         demanda = st.session_state.get('demanda', 116)
+        tempo_disp = st.session_state.get('tempo_disp', 30312)
         
         if not df_f.empty:
             df_f['Início (s)'] = df_f.groupby('Posto')['Tempo (s)'].cumsum() - df_f['Tempo (s)']
@@ -276,7 +306,8 @@ with tab_dash:
         with col_sup_esq:
             st.markdown(f"<div class='titulo-secao'>CARTA DE TRABALHO</div>", unsafe_allow_html=True)
             
-            postos_disp = list(df_f['Posto'].unique())
+            postos_disp = list(df_c['Posto'].unique())
+            postos_disp.sort(key=extrair_numero_posto)
             
             st.markdown("<div class='no-print' style='background:#f4f4f4; padding:10px; border-radius:5px; border:1px solid #ccc; margin-bottom:15px;'><b>⚙️ Ajuste Rápido do Layout</b></div>", unsafe_allow_html=True)
             
@@ -303,9 +334,8 @@ with tab_dash:
                 st.markdown(f"<div class='caixa-padrao' style='text-align:center;'><b>EPI'S:</b><br>{epis_html}</div>", unsafe_allow_html=True)
                 
             with c_layout_desenho:
-                postos = df_f['Posto'].unique()
                 html_layout = f"<div class='{'layout-u' if st.session_state.get('layout') == 'Célula em U' else 'layout-linha'}'>"
-                postos_display = list(postos)
+                postos_display = list(postos_disp)
                 
                 if st.session_state.get('layout') == 'Célula em U' and len(postos_display) > 2:
                     metade = (len(postos_display) + 1) // 2
@@ -318,8 +348,8 @@ with tab_dash:
                     wip = int(cfg_p['WIP'].values[0]) if not cfg_p.empty else 0
                     pos_op = cfg_p['Posição Operador'].values[0] if 'Posição Operador' in cfg_p.columns and not cfg_p.empty else 'Frente'
                     
-                    idx_cor = (list(postos).index(p_nome) % 5) + 1
-                    qtd_ativ = len(df_f[df_f['Posto'] == p_nome])
+                    idx_cor = (extrair_numero_posto(p_nome) % 5) + 1
+                    qtd_ativ = len(df_f[(df_f['Posto'] == p_nome) & (df_f['Tempo (s)'] > 0)])
                     bolinhas = "".join([f"<span class='bolinha b-{idx_cor}'>{j+1}</span>" for j in range(qtd_ativ)])
                     
                     html_posto = f"<div class='caixa-posto'>"
@@ -340,29 +370,36 @@ with tab_dash:
                     
                     html_posto += "</div>"
                     html_layout += html_posto
+                    
+                    # SETAS DE FLUXO (➔) COM FLEX-SHRINK EVITANDO QUE SUMAM
+                    if i < len(postos_display) - 1:
+                        html_layout += "<div class='seta-fluxo'>&#10140;</div>"
+                        
                 html_layout += "</div>"
                 st.markdown(html_layout, unsafe_allow_html=True)
 
         with col_sup_dir:
-            # GBO (Gráfico alterado para degradê de azul com base no tempo)
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                # Alterando a cor para refletir o "Tempo (s)" com a escala Blues contínua
                 fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Tempo (s)", 
                                  color_continuous_scale="Blues", text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
                 
                 totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
                 for posto, total in totais_gbo.items():
-                    fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=10)
+                    # NÚMEROS DO GBO AGORA BEM DESTACADOS NO TOPO (EM NEGRITO)
+                    fig_gbo.add_annotation(
+                        x=posto, y=total, 
+                        text=f"<b style='font-size:16px; color:#000;'>{round(total, 1)}s</b>", 
+                        showarrow=False, yshift=15
+                    )
 
-                # Ocultando a legenda de degradê (barra de cor) para economizar espaço
-                fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=15, b=0), showlegend=False, coloraxis_showscale=False)
-                fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
+                # CLIPONAXIS=FALSE PERMITE QUE O NÚMERO EXTRAPOLE O TOPO DO GRÁFICO SEM CORTAR
+                fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=30, b=0), showlegend=False, coloraxis_showscale=False, cliponaxis=False)
+                fig_gbo.update_traces(textposition='inside', insidetextanchor='middle', marker_line_color='black', marker_line_width=1)
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
-                # Gráficos de Pizza (Mantém as cores de valor agregado)
-                postos_gbo = sorted(df_f['Posto'].unique())
+                postos_gbo = sorted(df_f['Posto'].unique(), key=extrair_numero_posto)
                 cols_pizza = st.columns(len(postos_gbo))
                 
                 for idx, p_nome in enumerate(postos_gbo):
@@ -375,7 +412,6 @@ with tab_dash:
                         fig_p_pie.update_layout(height=140, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
                         st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
                 
-                # Legenda das Pizzas (Valor Agregado)
                 st.markdown("<div style='text-align:center; font-size: 14px; margin-top: 10px;'> "
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
                             "<span class='icon-legenda' style='background:#ffff00; margin-left:15px;'></span> Semi Agrega "
@@ -411,13 +447,21 @@ with tab_dash:
             st.markdown("<div class='titulo-secao'>QUADRO DE CAPACIDADE</div>", unsafe_allow_html=True)
             if not df_f.empty:
                 df_cap = df_f.groupby('Posto')['Tempo (s)'].sum().reset_index()
+                df_cap['num_posto'] = df_cap['Posto'].apply(extrair_numero_posto)
+                df_cap = df_cap.sort_values('num_posto').drop(columns=['num_posto'])
+                
                 df_cap.rename(columns={'Posto': 'Operação', 'Tempo (s)': 'Tc'}, inplace=True)
                 
                 df_cap['Tc<br>(saturação)'] = (df_cap['Tc'] * 1.10).round(0).astype(int)
                 df_cap['Takt'] = int(takt)
-                df_cap['Cap.<br>diária'] = (28800 / df_cap['Tc<br>(saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
+                df_cap['Cap.<br>diária'] = (tempo_disp / df_cap['Tc<br>(saturação)']).apply(lambda x: round(x, 1) if x > 0 else 0)
                 df_cap['Op.'] = 1  
-                df_cap['Capacidade<br>(saturação) %'] = ((df_cap['Tc<br>(saturação)'] / takt) * 100).round(2).astype(str) + "%"
+                
+                df_cap['Capacidade<br>(saturação) %'] = df_cap.apply(
+                    lambda row: f"{round(((tempo_disp / row['Takt']) / row['Cap.<br>diária']) * 100, 2)}%" if row['Cap.<br>diária'] > 0 else "0%", 
+                    axis=1
+                )
+                
                 df_cap['Demanda<br>(pçs/dia)'] = int(demanda)
                 
                 colunas_mostrar = ['Operação', 'Tc', 'Tc<br>(saturação)', 'Takt', 'Cap.<br>diária', 'Op.', 'Capacidade<br>(saturação) %', 'Demanda<br>(pçs/dia)']
