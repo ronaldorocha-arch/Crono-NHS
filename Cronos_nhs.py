@@ -143,7 +143,6 @@ tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashb
 # --- ABA 1: INSERÇÃO E CONFIGURAÇÃO DE DADOS ---
 # =====================================================================
 with tab_cad:
-    # ZONA DE EXCLUSÃO
     with st.expander("🗑️ Excluir Produto Existente"):
         produtos_salvos = df_tp['Produto'].unique() if not df_tp.empty else []
         if len(produtos_salvos) > 0:
@@ -167,7 +166,6 @@ with tab_cad:
     
     st.write("---")
     
-    # MODO DE CRIAÇÃO / EDIÇÃO
     modo = st.radio("Ação:", ["➕ Criar Novo Produto", "✏️ Editar Produto Existente"], horizontal=True)
     produtos_cadastrados = list(df_tp['Produto'].unique()) if not df_tp.empty else []
     
@@ -315,8 +313,14 @@ with tab_dash:
         tempo_disp = st.session_state.get('tempo_disp', 30312)
         
         if not df_f.empty:
+            df_f['num_posto'] = df_f['Posto'].apply(extrair_numero_posto)
+            df_f = df_f.sort_values(['num_posto']).reset_index(drop=True)
+            
             df_f['Início (s)'] = df_f.groupby('Posto')['Tempo (s)'].cumsum() - df_f['Tempo (s)']
             tc_total, tc_max = df_f['Tempo (s)'].sum().round(1), df_f.groupby('Posto')['Tempo (s)'].sum().max().round(1)
+            
+            # CRIA UMA IDENTIFICAÇÃO ÚNICA PARA O EIXO Y DO YAMAZUMI PARA EVITAR SOBREPOSIÇÃO
+            df_f['Passo_Unico'] = (df_f.index + 1).astype(str) + ". " + df_f['Atividade']
         else:
             tc_total, tc_max = 0, 0
             
@@ -407,7 +411,6 @@ with tab_dash:
         with col_sup_dir:
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                # DEGRADÊ MAIS SUAVE E AGRADÁVEL
                 fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Tempo (s)", 
                                  color_continuous_scale=["#A0CBE8", "#629BCE", "#2C69B0"], text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
@@ -455,7 +458,8 @@ with tab_dash:
         with col_inf_esq:
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                fig_gantt = px.bar(df_f, x="Tempo (s)", y="Atividade", base="Início (s)", color="Posto", 
+                # USA A COLUNA 'Passo_Unico' AQUI PARA NÃO SOBREPOR TAREFAS REPETIDAS
+                fig_gantt = px.bar(df_f, x="Tempo (s)", y="Passo_Unico", base="Início (s)", color="Posto", 
                                    orientation='h', text="Tempo (s)",
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
