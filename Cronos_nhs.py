@@ -175,7 +175,6 @@ with tab_cad:
     
     if modo == "✏️ Editar Produto Existente" and produtos_cadastrados:
         prod = c1.selectbox("Selecione o Produto:", produtos_cadastrados)
-        # Identifica quantos postos existem na configuração atual do produto
         cfg_existente = df_cfg[df_cfg["Produto"] == prod]
         postos_existentes = len(cfg_existente) if not cfg_existente.empty else 4
         qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=postos_existentes)
@@ -191,7 +190,6 @@ with tab_cad:
     
     epis_selecionados = st.multiselect("EPIs Necessários", ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas", "🎧 Protetor", "🧢 Touca"], default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas"])
     
-    # Forçamos o layout "Em Linha" em background
     st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'demanda': demanda_input, 'tempo_disp': tempo_disp_input, 'epis': epis_selecionados, 'layout': 'Em Linha'})
 
     st.write("---")
@@ -409,8 +407,9 @@ with tab_dash:
         with col_sup_dir:
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             if not df_f.empty:
+                # DEGRADÊ MAIS SUAVE E AGRADÁVEL
                 fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Tempo (s)", 
-                                 color_continuous_scale="Blues", text="Tempo (s)", barmode="stack")
+                                 color_continuous_scale=["#A0CBE8", "#629BCE", "#2C69B0"], text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
                 
                 totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
