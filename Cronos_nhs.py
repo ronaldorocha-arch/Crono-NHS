@@ -98,9 +98,7 @@ st.markdown("""
     .tabela-cap th { background-color: #f4f4f4; border: 1px solid #999; padding: 8px; text-align: center !important; vertical-align: middle !important; font-weight: bold; color: #000; line-height: 1.2;}
     .tabela-cap td { border: 1px solid #999; padding: 8px; text-align: center !important; vertical-align: middle !important; color: #333;}
     
-    /* ADICIONADO PADDING LATERAL DE 20px PARA O ANDON NÃO CORTAR */
     .layout-linha { display: flex; justify-content: flex-start; align-items: center; flex-wrap: nowrap; gap: 0px; padding: 60px 20px; width: 100%; overflow-x: auto;}
-    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px; width: 100%; margin: 0 auto; padding: 60px 20px;}
     
     .caixa-posto { 
         min-width: 125px; 
@@ -164,22 +162,37 @@ with tab_cad:
             st.info("Nenhum produto cadastrado no momento.")
 
     col_info1, col_info2 = st.columns(2)
-    # PADRÕES ALTERADOS: Elaborado em branco e Depto preenchido
     elaborador = col_info1.text_input("Elaborado por:", value=st.session_state.get('elaborador', ""))
     depto = col_info2.text_input("Departamento:", value=st.session_state.get('depto', "Tecnologia de Processos"))
     
     st.write("---")
-    c1, c2, c3, c4, c5, c6 = st.columns([1.5, 1, 1, 1, 1, 1.5])
-    prod = c1.text_input("Produto / Família", value="UPS - 02")
-    qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=4)
+    
+    # MODO DE CRIAÇÃO / EDIÇÃO
+    modo = st.radio("Ação:", ["➕ Criar Novo Produto", "✏️ Editar Produto Existente"], horizontal=True)
+    produtos_cadastrados = list(df_tp['Produto'].unique()) if not df_tp.empty else []
+    
+    c1, c2, c3, c4, c5 = st.columns([1.5, 1, 1, 1, 1])
+    
+    if modo == "✏️ Editar Produto Existente" and produtos_cadastrados:
+        prod = c1.selectbox("Selecione o Produto:", produtos_cadastrados)
+        # Identifica quantos postos existem na configuração atual do produto
+        cfg_existente = df_cfg[df_cfg["Produto"] == prod]
+        postos_existentes = len(cfg_existente) if not cfg_existente.empty else 4
+        qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=postos_existentes)
+    else:
+        if modo == "✏️ Editar Produto Existente" and not produtos_cadastrados:
+            st.warning("Nenhum produto salvo ainda. Você está no modo de criação.")
+        prod = c1.text_input("Nome do Novo Produto", value="")
+        qtd_postos = c2.number_input("Nº de Postos", min_value=1, value=4)
+        
     takt_input = c3.number_input("Takt Time (s)", min_value=1.0, value=261.0)
     demanda_input = c4.number_input("Demanda Diária", min_value=1, value=116)
     tempo_disp_input = c5.number_input("Tempo Disp. (s)", min_value=1, value=30312)
-    layout_tipo = c6.selectbox("Formato do Layout", ["Em Linha", "Célula em U"])
     
     epis_selecionados = st.multiselect("EPIs Necessários", ["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas", "🎧 Protetor", "🧢 Touca"], default=["🥽 Óculos", "🥼 Jaleco", "👞 Sapato", "🧤 Luvas"])
     
-    st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'demanda': demanda_input, 'tempo_disp': tempo_disp_input, 'epis': epis_selecionados, 'layout': layout_tipo})
+    # Forçamos o layout "Em Linha" em background
+    st.session_state.update({'elaborador': elaborador, 'depto': depto, 'takt': takt_input, 'demanda': demanda_input, 'tempo_disp': tempo_disp_input, 'epis': epis_selecionados, 'layout': 'Em Linha'})
 
     st.write("---")
     sub_tab_ativ, sub_tab_postos = st.tabs(["⏱️ Tempos e Atividades", "🏭 Configuração Física (Ponto Uso, Andon, WIP, Operador)"])
@@ -191,7 +204,7 @@ with tab_cad:
         
         df_prod = df_tp[df_tp["Produto"] == prod].copy()
         
-        if df_prod.empty: 
+        if df_prod.empty and prod != "": 
             df_prod = pd.DataFrame({
                 "Produto": [prod] * int(qtd_postos),
                 "Posto": lista_postos,
@@ -244,18 +257,21 @@ with tab_cad:
         )
         
     if st.button("💾 SALVAR PRODUTO E CONFIGURAÇÕES", type="primary", use_container_width=True):
-        edited_df["Produto"] = prod
-        edited_df['num_posto'] = edited_df['Posto'].apply(extrair_numero_posto)
-        edited_df = edited_df.sort_values('num_posto').drop(columns=['num_posto'])
-        
-        pd.concat([df_tp[df_tp["Produto"] != prod], edited_df], ignore_index=True).to_csv(FILE_TP, index=False)
-        
-        edited_cfg["Produto"] = prod
-        pd.concat([df_cfg[df_cfg["Produto"] != prod], edited_cfg], ignore_index=True).to_csv(FILE_POSTOS, index=False)
-        
-        st.session_state['produto_ativo'] = prod 
-        st.success("Guardado com sucesso e postos agrupados!")
-        st.rerun()
+        if prod.strip() == "":
+            st.error("Por favor, digite um nome para o Produto antes de salvar.")
+        else:
+            edited_df["Produto"] = prod
+            edited_df['num_posto'] = edited_df['Posto'].apply(extrair_numero_posto)
+            edited_df = edited_df.sort_values('num_posto').drop(columns=['num_posto'])
+            
+            pd.concat([df_tp[df_tp["Produto"] != prod], edited_df], ignore_index=True).to_csv(FILE_TP, index=False)
+            
+            edited_cfg["Produto"] = prod
+            pd.concat([df_cfg[df_cfg["Produto"] != prod], edited_cfg], ignore_index=True).to_csv(FILE_POSTOS, index=False)
+            
+            st.session_state['produto_ativo'] = prod 
+            st.success("Guardado com sucesso e postos agrupados!")
+            st.rerun()
 
 # =====================================================================
 # --- ABA 2: DASHBOARD COMPLETO (QUADRANTE A3/A4) ---
@@ -351,12 +367,8 @@ with tab_dash:
                 st.markdown(f"<div class='caixa-padrao' style='text-align:center;'><b>EPI'S:</b><br>{epis_html}</div>", unsafe_allow_html=True)
                 
             with c_layout_desenho:
-                html_layout = f"<div class='{'layout-u' if st.session_state.get('layout') == 'Célula em U' else 'layout-linha'}'>"
+                html_layout = "<div class='layout-linha'>"
                 postos_display = list(postos_disp)
-                
-                if st.session_state.get('layout') == 'Célula em U' and len(postos_display) > 2:
-                    metade = (len(postos_display) + 1) // 2
-                    postos_display = postos_display[:metade] + list(reversed(postos_display[metade:]))
                 
                 for i, p_nome in enumerate(postos_display):
                     cfg_p = df_c[df_c['Posto'] == p_nome]
