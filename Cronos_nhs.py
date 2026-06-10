@@ -32,10 +32,9 @@ def carregar_cfg_postos():
         df["Posição Operador"] = "Frente"
     return df
 
-# TÍTULO DA ABA CONFIGURADO CONFORME SOLICITADO
 st.set_page_config(page_title="Trabalho Padronizado - Tecnologia de Processos", layout="wide")
 
-# --- CSS ESTRUTURAL E IMPRESSÃO CORRIGIDA ---
+# --- CSS ESTRUTURAL E IMPRESSÃO ---
 st.markdown("""
     <style>
     @media print {
@@ -46,27 +45,35 @@ st.markdown("""
         * { 
             -webkit-print-color-adjust: exact !important; 
             color-adjust: exact !important; 
+            box-sizing: border-box !important;
         }
         
-        html, body, .stApp, .block-container { 
+        html, body, .stApp { 
             width: 100% !important; 
             max-width: 100% !important; 
             background-color: white !important; 
             margin: 0 !important; 
             padding: 0 !important;
-            overflow: visible !important;
+            overflow: hidden !important;
         }
         
-        /* Mantém os blocos em linha sem forçar quebra ou larguras erradas */
+        /* CORREÇÃO DAS MARGENS PARA NÃO CORTAR A DIREITA */
+        .block-container { 
+            width: 97vw !important; 
+            max-width: 97vw !important; 
+            margin: 0 auto !important; 
+            padding: 2mm !important;
+        }
+        
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
-            gap: 15px !important; 
+            gap: 10px !important; 
+            justify-content: space-between !important;
         }
         
-        /* CORREÇÃO: Removido o flex 50% universal que quebrava o cabeçalho e cortava as laterais */
         [data-testid="column"] { 
             min-width: 0 !important; 
             page-break-inside: avoid !important;
@@ -132,11 +139,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# TÍTULO PRINCIPAL DO SISTEMA CONFIGURADO CONFORME SOLICITADO
-st.title("📋 Trabalho Padronizado - Tecnologia de Processos")
-
 df_tp = carregar_tp()
 df_cfg = carregar_cfg_postos()
+
+st.title("📋 Trabalho Padronizado - Tecnologia de Processos")
 
 tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashboard A3/A4 (Ctrl+P para PDF)"])
 
@@ -281,13 +287,13 @@ with tab_dash:
         st.markdown("<div class='no-print' style='background:#eef7ff; padding:15px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'><b style='color:#0056b3; font-size: 15px;'>🖨️ Tamanho da Impressão (Ctrl+P)</b><br><span style='font-size: 13px; color: #555;'>Selecione a folha abaixo antes de imprimir. O sistema ajustará o zoom automaticamente para evitar cortes.</span></div>", unsafe_allow_html=True)
         tam_folha = st.radio("Selecione o tamanho:", ["A3", "A4"], horizontal=True, label_visibility="collapsed")
 
-        # AJUSTE ADICIONAL DE ZOOM SEGURO DO PROCESSO DE IMPRESSÃO A4 PARA NÃO CORTAR NADA
+        # AJUSTE NO ZOOM DO A4 (De 0.52 para 0.65 para aproveitar a folha e não ficar aquele vão em baixo)
         if tam_folha == "A4":
             st.markdown("""
                 <style>
                 @media print {
-                    @page { size: A4 landscape; margin: 4mm !important; }
-                    .block-container { zoom: 0.54 !important; padding: 4mm !important; }
+                    @page { size: A4 landscape; margin: 5mm !important; }
+                    .block-container { zoom: 0.65 !important; }
                 }
                 </style>
             """, unsafe_allow_html=True)
@@ -295,8 +301,8 @@ with tab_dash:
             st.markdown("""
                 <style>
                 @media print {
-                    @page { size: A3 landscape; margin: 0 !important; }
-                    .block-container { zoom: 1.0 !important; padding: 10mm 15mm 10mm 15mm !important; }
+                    @page { size: A3 landscape; margin: 5mm !important; }
+                    .block-container { zoom: 0.95 !important; }
                 }
                 </style>
             """, unsafe_allow_html=True)
@@ -426,7 +432,8 @@ with tab_dash:
                         showarrow=False, yshift=15
                     )
 
-                fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=30, b=0), showlegend=False, coloraxis_showscale=False)
+                # Altura aumentada de 280 para 300 para o gráfico respirar melhor
+                fig_gbo.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0), showlegend=False, coloraxis_showscale=False)
                 fig_gbo.update_yaxes(range=[0, max_val * 1.25]) 
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle', marker_line_color='black', marker_line_width=1)
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
@@ -441,7 +448,8 @@ with tab_dash:
                         
                         fig_p_pie = px.pie(df_p_pizza, values='Tempo (s)', names='Classificação', color='Classificação', color_discrete_map=color_map)
                         fig_p_pie.update_traces(textposition='inside', textinfo='percent')
-                        fig_p_pie.update_layout(height=140, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
+                        # Altura aumentada para 150
+                        fig_p_pie.update_layout(height=150, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
                         st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
                 
                 st.markdown("<div style='text-align:center; font-size: 14px; margin-top: 10px;'> "
@@ -464,7 +472,8 @@ with tab_dash:
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
                 fig_gantt.add_vline(x=takt, line_dash="solid", line_color="red")
                 
-                altura_grafico = max(300, len(df_f) * 30)
+                # Altura baseada no número de linhas para não amassar as barras
+                altura_grafico = max(320, len(df_f) * 32)
                 fig_gantt.update_layout(
                     yaxis={'autorange': 'reversed', 'title': '', 'visible': True}, 
                     xaxis={'title': 'Tempo (s)'},
