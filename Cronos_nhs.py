@@ -32,9 +32,10 @@ def carregar_cfg_postos():
         df["Posição Operador"] = "Frente"
     return df
 
-st.set_page_config(page_title="CronoNHS 2.0 - A3/A4", layout="wide")
+# TÍTULO DA ABA CONFIGURADO CONFORME SOLICITADO
+st.set_page_config(page_title="Trabalho Padronizado - Tecnologia de Processos", layout="wide")
 
-# --- CSS ESTRUTURAL E IMPRESSÃO ---
+# --- CSS ESTRUTURAL E IMPRESSÃO CORRIGIDA ---
 st.markdown("""
     <style>
     @media print {
@@ -56,19 +57,18 @@ st.markdown("""
             overflow: visible !important;
         }
         
+        /* Mantém os blocos em linha sem forçar quebra ou larguras erradas */
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
-            gap: 10px !important; 
-            justify-content: space-between !important;
+            gap: 15px !important; 
         }
         
+        /* CORREÇÃO: Removido o flex 50% universal que quebrava o cabeçalho e cortava as laterais */
         [data-testid="column"] { 
-            flex: 1 1 50% !important; 
             min-width: 0 !important; 
-            display: block !important;
             page-break-inside: avoid !important;
         }
         
@@ -132,10 +132,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# TÍTULO PRINCIPAL DO SISTEMA CONFIGURADO CONFORME SOLICITADO
+st.title("📋 Trabalho Padronizado - Tecnologia de Processos")
+
 df_tp = carregar_tp()
 df_cfg = carregar_cfg_postos()
-
-st.title("📋 Trabalho Padronizado NHS 2.0 - Tecnologia de Processos")
 
 tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashboard A3/A4 (Ctrl+P para PDF)"])
 
@@ -280,12 +281,13 @@ with tab_dash:
         st.markdown("<div class='no-print' style='background:#eef7ff; padding:15px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'><b style='color:#0056b3; font-size: 15px;'>🖨️ Tamanho da Impressão (Ctrl+P)</b><br><span style='font-size: 13px; color: #555;'>Selecione a folha abaixo antes de imprimir. O sistema ajustará o zoom automaticamente para evitar cortes.</span></div>", unsafe_allow_html=True)
         tam_folha = st.radio("Selecione o tamanho:", ["A3", "A4"], horizontal=True, label_visibility="collapsed")
 
+        # AJUSTE ADICIONAL DE ZOOM SEGURO DO PROCESSO DE IMPRESSÃO A4 PARA NÃO CORTAR NADA
         if tam_folha == "A4":
             st.markdown("""
                 <style>
                 @media print {
-                    @page { size: A4 landscape; margin: 5mm !important; }
-                    .block-container { zoom: 0.52 !important; padding: 5mm !important; }
+                    @page { size: A4 landscape; margin: 4mm !important; }
+                    .block-container { zoom: 0.54 !important; padding: 4mm !important; }
                 }
                 </style>
             """, unsafe_allow_html=True)
@@ -319,7 +321,6 @@ with tab_dash:
             df_f['Início (s)'] = df_f.groupby('Posto')['Tempo (s)'].cumsum() - df_f['Tempo (s)']
             tc_total, tc_max = df_f['Tempo (s)'].sum().round(1), df_f.groupby('Posto')['Tempo (s)'].sum().max().round(1)
             
-            # CRIA UMA IDENTIFICAÇÃO ÚNICA PARA O EIXO Y DO YAMAZUMI PARA EVITAR SOBREPOSIÇÃO
             df_f['Passo_Unico'] = (df_f.index + 1).astype(str) + ". " + df_f['Atividade']
         else:
             tc_total, tc_max = 0, 0
@@ -458,7 +459,6 @@ with tab_dash:
         with col_inf_esq:
             st.markdown("<div class='titulo-secao'>TABELA COMBINADA (YAMAZUMI)</div>", unsafe_allow_html=True)
             if not df_f.empty:
-                # USA A COLUNA 'Passo_Unico' AQUI PARA NÃO SOBREPOR TAREFAS REPETIDAS
                 fig_gantt = px.bar(df_f, x="Tempo (s)", y="Passo_Unico", base="Início (s)", color="Posto", 
                                    orientation='h', text="Tempo (s)",
                                    color_discrete_sequence=["#00bcd4", "#4caf50", "#e040fb", "#ff9800", "#9c27b0"])
