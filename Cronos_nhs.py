@@ -233,7 +233,6 @@ with tab_cad:
         edited_cfg["Produto"] = prod
         pd.concat([df_cfg[df_cfg["Produto"] != prod], edited_cfg], ignore_index=True).to_csv(FILE_POSTOS, index=False)
         
-        # Salva o produto ativo na sessão para forçar o Dashboard a abrir nele
         st.session_state['produto_ativo'] = prod 
         st.success("Guardado com sucesso e postos agrupados!")
         st.rerun()
@@ -242,7 +241,6 @@ with tab_cad:
 # --- ABA 2: DASHBOARD COMPLETO (QUADRANTE A3/A4) ---
 # =====================================================================
 with tab_dash:
-    # Recarrega direto do arquivo para garantir que a aba tenha os dados 100% frescos
     df_tp = carregar_tp()
     df_cfg = carregar_cfg_postos()
     
@@ -270,7 +268,6 @@ with tab_dash:
             """, unsafe_allow_html=True)
 
         lista_produtos = list(df_tp['Produto'].unique())
-        # Tenta pegar o index do produto recém salvo para forçar a visualização atualizada
         idx_selecionado = 0
         if st.session_state.get('produto_ativo') in lista_produtos:
             idx_selecionado = lista_produtos.index(st.session_state['produto_ativo'])
@@ -371,7 +368,6 @@ with tab_dash:
                     html_posto += "</div>"
                     html_layout += html_posto
                     
-                    # SETAS DE FLUXO (➔) COM FLEX-SHRINK EVITANDO QUE SUMAM
                     if i < len(postos_display) - 1:
                         html_layout += "<div class='seta-fluxo'>&#10140;</div>"
                         
@@ -387,15 +383,15 @@ with tab_dash:
                 
                 totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
                 for posto, total in totais_gbo.items():
-                    # NÚMEROS DO GBO AGORA BEM DESTACADOS NO TOPO (EM NEGRITO)
                     fig_gbo.add_annotation(
                         x=posto, y=total, 
                         text=f"<b style='font-size:16px; color:#000;'>{round(total, 1)}s</b>", 
                         showarrow=False, yshift=15
                     )
 
-                # CLIPONAXIS=FALSE PERMITE QUE O NÚMERO EXTRAPOLE O TOPO DO GRÁFICO SEM CORTAR
-                fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=30, b=0), showlegend=False, coloraxis_showscale=False, cliponaxis=False)
+                # CORREÇÃO: cliponaxis=False removido do update_layout e adicionado ao update_yaxes
+                fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=30, b=0), showlegend=False, coloraxis_showscale=False)
+                fig_gbo.update_yaxes(cliponaxis=False)
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle', marker_line_color='black', marker_line_width=1)
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
