@@ -34,7 +34,7 @@ def carregar_cfg_postos():
 
 st.set_page_config(page_title="Trabalho Padronizado - Tecnologia de Processos", layout="wide")
 
-# --- CSS ESTRUTURAL E IMPRESSÃO (LIMPO E ESTÁVEL) ---
+# --- CSS ESTRUTURAL E IMPRESSÃO (CORREÇÃO DE CORTE LATERAL) ---
 st.markdown("""
     <style>
     @media print {
@@ -45,13 +45,22 @@ st.markdown("""
         * { 
             -webkit-print-color-adjust: exact !important; 
             color-adjust: exact !important; 
+            box-sizing: border-box !important; /* ESSENCIAL PARA NÃO VAZAR MARGENS */
         }
         
-        html, body, .stApp, .block-container { 
+        html, body, .stApp { 
             width: 100% !important; 
             max-width: 100% !important; 
             background-color: white !important; 
             margin: 0 !important; 
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+        
+        .block-container { 
+            width: 98% !important; /* Ajuste para criar margem de segurança */
+            max-width: 98% !important; 
+            margin: 0 auto !important; 
             padding: 0 !important;
         }
         
@@ -59,12 +68,25 @@ st.markdown("""
         [data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             display: flex !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            gap: 15px !important;
         }
+        
         [data-testid="column"] { 
             width: auto !important;
             flex: 1 1 0% !important;
             min-width: 0 !important; 
             page-break-inside: avoid !important;
+        }
+        
+        .js-plotly-plot, .plot-container {
+            width: 100% !important;
+        }
+        
+        .stDataFrame, [data-testid="stDataFrame"], [data-testid="stGridVirtualizer"] {
+            width: 100% !important;
+            overflow: visible !important;
         }
     }
     
@@ -261,12 +283,12 @@ with tab_dash:
         st.markdown("<div class='no-print' style='background:#eef7ff; padding:15px; border-radius:5px; border:1px solid #b3d4fc; margin-bottom:15px;'><b style='color:#0056b3; font-size: 15px;'>🖨️ Tamanho da Impressão (Ctrl+P)</b><br><span style='font-size: 13px; color: #555;'>Selecione a folha abaixo antes de imprimir. O sistema ajustará o zoom automaticamente para evitar cortes.</span></div>", unsafe_allow_html=True)
         tam_folha = st.radio("Selecione o tamanho:", ["A3", "A4"], horizontal=True, label_visibility="collapsed")
 
-        # ZOOM MAIS SEGURO
+        # AJUSTES DE ZOOM
         if tam_folha == "A4":
             st.markdown("""
                 <style>
                 @media print {
-                    @page { size: A4 landscape; margin: 10mm !important; }
+                    @page { size: A4 landscape; margin: 5mm !important; }
                     .block-container { zoom: 0.60 !important; }
                 }
                 </style>
