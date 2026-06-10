@@ -382,6 +382,8 @@ with tab_dash:
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
                 
                 totais_gbo = df_f.groupby('Posto')['Tempo (s)'].sum()
+                max_val = max(totais_gbo.max(), takt) if not totais_gbo.empty else takt
+
                 for posto, total in totais_gbo.items():
                     fig_gbo.add_annotation(
                         x=posto, y=total, 
@@ -389,9 +391,9 @@ with tab_dash:
                         showarrow=False, yshift=15
                     )
 
-                # CORREÇÃO: cliponaxis=False removido do update_layout e adicionado ao update_yaxes
+                # CORREÇÃO: Aumenta o range do eixo Y em 25% para o número nunca ser cortado
                 fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=30, b=0), showlegend=False, coloraxis_showscale=False)
-                fig_gbo.update_yaxes(cliponaxis=False)
+                fig_gbo.update_yaxes(range=[0, max_val * 1.25]) 
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle', marker_line_color='black', marker_line_width=1)
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
