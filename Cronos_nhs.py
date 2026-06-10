@@ -38,7 +38,7 @@ st.set_page_config(page_title="CronoNHS 2.0 - A3/A4", layout="wide")
 st.markdown("""
     <style>
     @media print {
-        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"], [data-testid="stRadio"] { 
+        header, footer, .stApp > header, .stTabs [data-baseweb="tab-list"], #MainMenu, [data-testid="stSidebar"], h1, .no-print, [data-testid="stMultiSelect"], [data-testid="stSelectbox"], [data-testid="stRadio"], .stExpander { 
             display: none !important; 
         }
         
@@ -98,8 +98,9 @@ st.markdown("""
     .tabela-cap th { background-color: #f4f4f4; border: 1px solid #999; padding: 8px; text-align: center !important; vertical-align: middle !important; font-weight: bold; color: #000; line-height: 1.2;}
     .tabela-cap td { border: 1px solid #999; padding: 8px; text-align: center !important; vertical-align: middle !important; color: #333;}
     
-    .layout-linha { display: flex; justify-content: flex-start; align-items: center; flex-wrap: nowrap; gap: 0px; padding: 60px 0px; width: 100%; overflow-x: auto;}
-    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px; width: 100%; margin: 0 auto; padding: 60px 0px;}
+    /* ADICIONADO PADDING LATERAL DE 20px PARA O ANDON NÃO CORTAR */
+    .layout-linha { display: flex; justify-content: flex-start; align-items: center; flex-wrap: nowrap; gap: 0px; padding: 60px 20px; width: 100%; overflow-x: auto;}
+    .layout-u { display: flex; flex-wrap: wrap; justify-content: center; gap: 0px; width: 100%; margin: 0 auto; padding: 60px 20px;}
     
     .caixa-posto { 
         min-width: 125px; 
@@ -144,9 +145,28 @@ tab_cad, tab_dash = st.tabs(["📝 1. Inserir Dados e Layout", "🖥️ 2. Dashb
 # --- ABA 1: INSERÇÃO E CONFIGURAÇÃO DE DADOS ---
 # =====================================================================
 with tab_cad:
+    # ZONA DE EXCLUSÃO
+    with st.expander("🗑️ Excluir Produto Existente"):
+        produtos_salvos = df_tp['Produto'].unique() if not df_tp.empty else []
+        if len(produtos_salvos) > 0:
+            c_del1, c_del2 = st.columns([3, 1])
+            prod_excluir = c_del1.selectbox("Selecione o produto para remover permanentemente:", produtos_salvos)
+            if c_del2.button("⚠️ Excluir", use_container_width=True):
+                df_tp = df_tp[df_tp["Produto"] != prod_excluir]
+                df_cfg = df_cfg[df_cfg["Produto"] != prod_excluir]
+                df_tp.to_csv(FILE_TP, index=False)
+                df_cfg.to_csv(FILE_POSTOS, index=False)
+                if st.session_state.get('produto_ativo') == prod_excluir:
+                    st.session_state['produto_ativo'] = ""
+                st.success(f"Produto '{prod_excluir}' foi apagado.")
+                st.rerun()
+        else:
+            st.info("Nenhum produto cadastrado no momento.")
+
     col_info1, col_info2 = st.columns(2)
-    elaborador = col_info1.text_input("Elaborado por:", value=st.session_state.get('elaborador', "Engenharia"))
-    depto = col_info2.text_input("Departamento:", value=st.session_state.get('depto', "Melhoria Contínua"))
+    # PADRÕES ALTERADOS: Elaborado em branco e Depto preenchido
+    elaborador = col_info1.text_input("Elaborado por:", value=st.session_state.get('elaborador', ""))
+    depto = col_info2.text_input("Departamento:", value=st.session_state.get('depto', "Tecnologia de Processos"))
     
     st.write("---")
     c1, c2, c3, c4, c5, c6 = st.columns([1.5, 1, 1, 1, 1, 1.5])
@@ -391,7 +411,6 @@ with tab_dash:
                         showarrow=False, yshift=15
                     )
 
-                # CORREÇÃO: Aumenta o range do eixo Y em 25% para o número nunca ser cortado
                 fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=30, b=0), showlegend=False, coloraxis_showscale=False)
                 fig_gbo.update_yaxes(range=[0, max_val * 1.25]) 
                 fig_gbo.update_traces(textposition='inside', insidetextanchor='middle', marker_line_color='black', marker_line_width=1)
