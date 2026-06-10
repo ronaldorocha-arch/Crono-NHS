@@ -344,8 +344,10 @@ with tab_dash:
                 st.markdown(html_layout, unsafe_allow_html=True)
 
         with col_sup_dir:
+            # GBO (Gráfico alterado para degradê de azul com base no tempo)
             st.markdown("<div class='titulo-secao'>GBO (VALOR AGREGADO)</div>", unsafe_allow_html=True)
             if not df_f.empty:
+                # Alterando a cor para refletir o "Tempo (s)" com a escala Blues contínua
                 fig_gbo = px.bar(df_f, x="Posto", y="Tempo (s)", color="Tempo (s)", 
                                  color_continuous_scale="Blues", text="Tempo (s)", barmode="stack")
                 fig_gbo.add_hline(y=takt, line_dash="solid", line_color="red")
@@ -354,13 +356,12 @@ with tab_dash:
                 for posto, total in totais_gbo.items():
                     fig_gbo.add_annotation(x=posto, y=total, text=f"<b>{round(total, 1)}s</b>", showarrow=False, yshift=10)
 
+                # Ocultando a legenda de degradê (barra de cor) para economizar espaço
                 fig_gbo.update_layout(height=280, margin=dict(l=0, r=0, t=15, b=0), showlegend=False, coloraxis_showscale=False)
-                
-                # ADICIONADA A BORDA PRETA AQUI: marker_line_color='black', marker_line_width=1
-                fig_gbo.update_traces(textposition='inside', insidetextanchor='middle', marker_line_color='black', marker_line_width=1)
-                
+                fig_gbo.update_traces(textposition='inside', insidetextanchor='middle')
                 st.plotly_chart(fig_gbo, use_container_width=True, key="gbo_chart")
                 
+                # Gráficos de Pizza (Mantém as cores de valor agregado)
                 postos_gbo = sorted(df_f['Posto'].unique())
                 cols_pizza = st.columns(len(postos_gbo))
                 
@@ -374,6 +375,7 @@ with tab_dash:
                         fig_p_pie.update_layout(height=140, margin=dict(l=2, r=2, t=2, b=2), showlegend=False)
                         st.plotly_chart(fig_p_pie, use_container_width=True, key=f"pie_{p_nome}")
                 
+                # Legenda das Pizzas (Valor Agregado)
                 st.markdown("<div style='text-align:center; font-size: 14px; margin-top: 10px;'> "
                             "<span class='icon-legenda' style='background:#00ff00;'></span> Agrega "
                             "<span class='icon-legenda' style='background:#ffff00; margin-left:15px;'></span> Semi Agrega "
